@@ -164,7 +164,7 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
 
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
-      <div style={{ width: "100%", maxWidth: "620px" }}>
+      <div style={{ width: "100%", maxWidth: "760px" }}>
         <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
             Life Inventory · {index + 1} of {total}
@@ -452,7 +452,7 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: "700px", width: "100%", margin: "0 auto", padding: "0.85rem 1.5rem 0" }}>
+      <div style={{ maxWidth: "780px", width: "100%", margin: "0 auto", padding: "0.85rem 1.5rem 0" }}>
         <div style={{ height: "4px", background: c.bgInput, borderRadius: "2px", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${progress}%`, background: c.accent, transition: "width 0.4s ease" }} />
         </div>
@@ -461,7 +461,7 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
         </div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "0 1.5rem" }}>
-        <div style={{ maxWidth: "700px", margin: "0 auto", paddingTop: "1.5rem" }}>
+        <div style={{ maxWidth: "780px", margin: "0 auto", paddingTop: "1.5rem" }}>
           {visible.map((m, i) => (
             <div key={i} style={{ marginBottom: "2rem" }}>
               {m.role === "user" ? (
@@ -499,7 +499,7 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
           <div ref={endRef} />
         </div>
       </div>
-      <div style={{ maxWidth: "700px", width: "100%", margin: "0 auto", padding: "1rem 1.5rem 1.5rem" }}>
+      <div style={{ maxWidth: "780px", width: "100%", margin: "0 auto", padding: "1rem 1.5rem 1.5rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "10px", padding: "10px 14px" }}>
           <textarea
             value={draft}
@@ -570,7 +570,7 @@ function compileFullInventory(answers) {
 function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
-      <div style={{ width: "100%", maxWidth: "480px", textAlign: "center" }}>
+      <div style={{ width: "100%", maxWidth: "560px", textAlign: "center" }}>
         <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
           The Energy Audit
         </div>
