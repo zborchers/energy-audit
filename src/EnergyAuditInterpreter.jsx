@@ -64,7 +64,8 @@ function Disclaimer() {
 
 function OptionGroup({ group, stateKey, selections, toggle, loading, followupValue, setFollowup }) {
   const selected = selections[stateKey] || [];
-  const showFollowup = group.followupIfYes && selected.includes("Yes");
+  const trigger = group.followupTrigger;
+  const showFollowup = trigger && trigger.values.some(v => selected.includes(v));
   return (
     <div style={{ marginBottom: "1.4rem" }}>
       <div style={{ fontSize: "13px", fontWeight: 700, color: c.textPrimary, marginBottom: "0.6rem", fontFamily: SANS }}>
@@ -100,11 +101,11 @@ function OptionGroup({ group, stateKey, selections, toggle, loading, followupVal
       {showFollowup && (
         <div style={{ marginTop: "0.75rem", background: c.bgInput, border: `1px solid ${c.accent}`, borderRadius: "10px", padding: "10px 14px" }}>
           <div style={{ fontSize: "12px", color: c.accent, fontFamily: SANS, fontWeight: 600, marginBottom: "0.35rem" }}>
-            {group.followupIfYes.label}
+            {trigger.label}
           </div>
           <textarea
             value={followupValue || ""}
-            onChange={e => setFollowup(group.followupIfYes.key, e.target.value)}
+            onChange={e => setFollowup(trigger.key, e.target.value)}
             placeholder="Type here..."
             rows={2}
             style={{ background: "transparent", border: "none", outline: "none", color: c.textPrimary, fontSize: "15px", fontFamily: SERIF, lineHeight: 1.6, resize: "none", width: "100%" }}
@@ -186,7 +187,7 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
               selections={selections}
               toggle={toggle}
               loading={loading}
-              followupValue={g.followupIfYes ? selections[g.followupIfYes.key] : undefined}
+              followupValue={g.followupTrigger ? selections[g.followupTrigger.key] : undefined}
               setFollowup={setTextField}
             />
           ))}
@@ -486,8 +487,8 @@ function formatDomainAnswers(domain, answers) {
     const val = a[g.key];
     if (val && val.length) lines.push(`${g.label}\n${val.join(", ")}`);
     else lines.push(`${g.label}\n(skipped)`);
-    if (g.followupIfYes && a[g.followupIfYes.key] && a[g.followupIfYes.key].trim()) {
-      lines.push(`${g.followupIfYes.label}\n${a[g.followupIfYes.key].trim()}`);
+    if (g.followupTrigger && a[g.followupTrigger.key] && a[g.followupTrigger.key].trim()) {
+      lines.push(`${g.followupTrigger.label}\n${a[g.followupTrigger.key].trim()}`);
     }
   };
 
