@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { LIFE_INVENTORY_DOMAINS } from "./lifeInventoryData.js";
 import { ENERGY_AUDIT_SYSTEM_PROMPT } from "./energyAuditSystemPrompt.js";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 
 const SANS = "'Plus Jakarta Sans','system-ui',sans-serif";
 const SERIF = "'Crimson Text','Georgia',serif";
@@ -261,24 +260,36 @@ async function callAPI(messages, maxTokens = 3000) {
   throw lastErr;
 }
 
-
-function EnergeticDirectionAction() {
+function NameScreen({ name, setName, onContinue }) {
   return (
-    <div style={{ marginTop: "2rem", background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "12px", padding: "1.4rem 1.5rem", textAlign: "center", fontFamily: SANS }}>
-      <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: c.accent, marginBottom: "0.6rem" }}>
-        Energetic Direction
+    <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "2.5rem 1.5rem", overflowY: "auto" }}>
+      <div style={{ width: "100%", maxWidth: "480px", textAlign: "center" }}>
+        <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
+          Client Intake
+        </div>
+        <div style={{ fontSize: "24px", fontWeight: 700, color: c.textPrimary, marginBottom: "1rem", lineHeight: 1.3, fontFamily: SANS, letterSpacing: "-0.01em" }}>
+          What's your name?
+        </div>
+        <div style={{ fontSize: "15px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.7, marginBottom: "1.75rem" }}>
+          This is how Zach will know whose intake this is. Everything you share here goes directly to him to prepare for your session — it's not something you'll get back to read yourself.
+        </div>
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Your full name"
+          onKeyDown={e => { if (e.key === "Enter" && name.trim()) onContinue(); }}
+          autoFocus
+          style={{ width: "100%", background: c.bgInput, border: `1.5px solid ${c.borderMid}`, borderRadius: "8px", padding: "12px 16px", fontSize: "16px", fontFamily: SERIF, color: c.textPrimary, outline: "none", marginBottom: "1.25rem", boxSizing: "border-box" }}
+        />
+        <button
+          onClick={onContinue}
+          disabled={!name.trim()}
+          style={{ background: name.trim() ? c.accent : c.accentMid, border: "none", borderRadius: "6px", padding: "12px 30px", fontSize: "15px", color: "#fff", cursor: name.trim() ? "pointer" : "default", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.03em" }}
+        >
+          Continue
+        </button>
       </div>
-      <div style={{ fontSize: "15px", color: c.textPrimary, lineHeight: 1.6, marginBottom: "1rem", fontFamily: SERIF }}>
-        This reading is a map. Energetic Direction is where you actually live it — sustained one-on-one work, real accountability, and guided practice a reading alone can't provide.
-      </div>
-      <a
-        href="https://voltagewellness.com/work-with-me.html#direction"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ display: "inline-block", background: c.accent, border: "none", borderRadius: "6px", padding: "10px 22px", fontSize: "13px", fontWeight: 700, letterSpacing: "0.03em", color: "#fff", textDecoration: "none" }}
-      >
-        Learn about Energetic Direction &rarr;
-      </a>
     </div>
   );
 }
@@ -309,156 +320,35 @@ function GeneratingScreen({ stage }) {
   );
 }
 
-// Parses the model's lightweight "# " / "## " heading markup into a
-// structured list of blocks, shared by both the on-screen display and the
-// Word export, so the two never drift apart from each other.
-function parseReportStructure(text) {
-  const lines = text.split("\n");
-  const blocks = [];
-  let currentParagraph = [];
-
-  const flushParagraph = () => {
-    if (currentParagraph.length) {
-      const combined = currentParagraph.join(" ").trim();
-      if (combined) blocks.push({ type: "p", text: combined });
-      currentParagraph = [];
-    }
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("### ")) {
-      flushParagraph();
-      blocks.push({ type: "h3", text: trimmed.slice(4).trim() });
-    } else if (trimmed.startsWith("## ")) {
-      flushParagraph();
-      blocks.push({ type: "h2", text: trimmed.slice(3).trim() });
-    } else if (trimmed.startsWith("# ")) {
-      flushParagraph();
-      blocks.push({ type: "h1", text: trimmed.slice(2).trim() });
-    } else if (trimmed === "") {
-      flushParagraph();
-    } else {
-      currentParagraph.push(trimmed);
-    }
-  }
-  flushParagraph();
-  return blocks;
-}
-
-function ReportContent({ text }) {
-  const blocks = parseReportStructure(text);
+function ErrorScreen({ error, sendError, onRetry }) {
+  const message = sendError
+    ? "Your answers were analyzed successfully, but there was a connection error sending them to Zach."
+    : "There was a connection error generating your analysis.";
   return (
-    <>
-      {blocks.map((b, i) => {
-        if (b.type === "h1") {
-          return (
-            <div key={i} style={{ fontSize: "23px", fontWeight: 700, fontFamily: SANS, color: c.textPrimary, letterSpacing: "-0.01em", marginTop: i === 0 ? 0 : "2.5rem", marginBottom: "1.1rem", paddingBottom: "0.6rem", borderBottom: `1px solid ${c.borderMid}` }}>
-              {b.text}
-            </div>
-          );
-        }
-        if (b.type === "h2") {
-          return (
-            <div key={i} style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
-              {b.text}
-            </div>
-          );
-        }
-        if (b.type === "h3") {
-          const isDrain = b.text.toLowerCase().includes("drain");
-          return (
-            <div key={i} style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: SANS, color: isDrain ? c.accentPop : c.accent, marginTop: "1.1rem", marginBottom: "0.4rem" }}>
-              {b.text}
-            </div>
-          );
-        }
-        return (
-          <p key={i} style={{ margin: "0 0 1.15rem", lineHeight: 1.85, fontFamily: SERIF, fontSize: "17px" }}>
-            {b.text}
-          </p>
-        );
-      })}
-    </>
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+      <div style={{ maxWidth: "480px", textAlign: "center" }}>
+        <div style={{ color: c.accentPop, fontSize: "15px", fontFamily: SANS, marginBottom: "1.25rem" }}>{message}</div>
+        <button
+          onClick={onRetry}
+          style={{ background: c.accent, border: "none", borderRadius: "6px", padding: "10px 24px", fontSize: "14px", fontFamily: SANS, fontWeight: 700, color: "#fff", cursor: "pointer", letterSpacing: "0.03em" }}
+        >
+          Try again
+        </button>
+      </div>
+    </div>
   );
 }
 
-async function downloadReadingAsDocx(readingText) {
-  const blocks = parseReportStructure(readingText);
-  const bodyChildren = blocks.map(b => {
-    if (b.type === "h1") {
-      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 200 } });
-    }
-    if (b.type === "h2") {
-      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_2, spacing: { before: 280, after: 160 } });
-    }
-    if (b.type === "h3") {
-      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 120 } });
-    }
-    return new Paragraph({
-      children: [new TextRun({ text: b.text, font: "Georgia", size: 24 })],
-      spacing: { after: 240 },
-    });
-  });
-
-  const doc = new Document({
-    sections: [{
-      properties: {},
-      children: [
-        new Paragraph({
-          text: "Energetic Direction — Client Analysis",
-          heading: HeadingLevel.TITLE,
-          spacing: { after: 120 },
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: "Voltage Wellness", italics: true, size: 20, color: "5C5147" })],
-          spacing: { after: 480 },
-        }),
-        ...bodyChildren,
-      ],
-    }],
-  });
-
-  const blob = await Packer.toBlob(doc);
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "client-intake-analysis.docx";
-  link.click();
-}
-
-function ReadingScreen({ reading, error, onRetry }) {
+function DoneScreen({ name }) {
   return (
-    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
-      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "1.5rem 0 2.5rem" }}>
-        {error ? (
-          <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-              <span style={{ color: c.accentPop, fontSize: "15px" }}>There was a connection error generating your Reading.</span>
-              <button
-                onClick={onRetry}
-                style={{ background: c.accent, border: "none", borderRadius: "4px", padding: "8px 18px", fontSize: "13px", fontFamily: SANS, fontWeight: 700, color: "#fff", cursor: "pointer", letterSpacing: "0.03em" }}
-              >
-                Try again
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
-              <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, fontFamily: SANS }}>
-                Client Analysis
-              </div>
-              <button
-                onClick={() => downloadReadingAsDocx(reading.text)}
-                style={{ background: "transparent", border: `1.5px solid ${c.borderMid}`, borderRadius: "6px", padding: "7px 16px", fontSize: "12px", fontFamily: SANS, fontWeight: 700, color: c.textPrimary, cursor: "pointer", letterSpacing: "0.02em" }}
-              >
-                Download as Word document
-              </button>
-            </div>
-            <ReportContent text={reading.text} />
-            <EnergeticDirectionAction />
-          </div>
-        )}
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+      <div style={{ maxWidth: "480px", textAlign: "center" }}>
+        <div style={{ fontSize: "24px", fontWeight: 700, color: c.textPrimary, marginBottom: "1rem", fontFamily: SANS, letterSpacing: "-0.01em" }}>
+          Thank you, {name.split(" ")[0]}.
+        </div>
+        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75 }}>
+          Your intake is complete, and everything you shared has been sent directly to Zach to prepare for your session together. There's nothing further you need to do — he'll follow up to schedule your next step.
+        </div>
       </div>
     </div>
   );
@@ -498,7 +388,8 @@ function compileFullInventory(answers) {
 // ---- MAIN APP ----
 
 export default function EnergyAuditInterpreter() {
-  const [step, setStep] = useState("intake"); // intake | generating | reading
+  const [step, setStep] = useState("name"); // name | intake | generating | done
+  const [clientName, setClientName] = useState("");
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [reading, setReading] = useState(null); // { text }
@@ -519,6 +410,28 @@ export default function EnergyAuditInterpreter() {
   const [generatingStage, setGeneratingStage] = useState(1);
   const [retryState, setRetryState] = useState(null);
 
+  const [sendError, setSendError] = useState(false);
+
+  const sendResults = async (analysisText) => {
+    setSendError(false);
+    try {
+      const res = await fetch("/api/send-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName,
+          rawAnswers: compileFullInventory(answers),
+          analysisText,
+        }),
+      });
+      if (!res.ok) throw new Error("Send failed");
+      setStep("done");
+    } catch {
+      setSendError(true);
+      setStep("error");
+    }
+  };
+
   const generateReading = async (resume) => {
     setStep("generating");
     setReadingError(false);
@@ -529,7 +442,7 @@ export default function EnergyAuditInterpreter() {
       ({ history, stage, parts } = resume);
     } else {
       const compiled = compileFullInventory(answers);
-      history = [{ role: "user", content: `Here is the person's full Life Inventory:\n\n${compiled}\n\nWrite Part One (The Anchor) now.` }];
+      history = [{ role: "user", content: `Here is the client's full Life Inventory (client name: ${clientName}):\n\n${compiled}\n\nWrite Part One (The Overview and the Core Pattern) now.` }];
       stage = 1;
       parts = {};
     }
@@ -539,38 +452,48 @@ export default function EnergyAuditInterpreter() {
         setGeneratingStage(1);
         const part1 = await callAPI(history, 3000);
         parts.partOne = part1;
-        history = [...history, { role: "assistant", content: part1 }, { role: "user", content: "Now write Part Two (Domain by Domain, all ten domains)." }];
+        history = [...history, { role: "assistant", content: part1 }, { role: "user", content: "Now write Part Two (Drains and Recharges, Domain by Domain)." }];
         stage = 2;
       }
       if (stage === 2) {
         setGeneratingStage(2);
         const part2 = await callAPI(history, 6000);
         parts.partTwo = part2;
-        history = [...history, { role: "assistant", content: part2 }, { role: "user", content: "Now write Part Three (Where to Start, and Close), including the chakra location marker at the end." }];
+        history = [...history, { role: "assistant", content: part2 }, { role: "user", content: "Now write Part Three (Where to Start, and Notes for Session One)." }];
         stage = 3;
       }
       setGeneratingStage(3);
       const part3 = await callAPI(history, 2000);
       const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
       setReading({ text: fullText });
-      setStep("reading");
+      await sendResults(fullText);
     } catch {
       setRetryState({ history, stage, parts });
       setReadingError(true);
-      setStep("reading");
+      setStep("error");
     }
     setLoading(false);
   };
 
-  const retryReading = () => generateReading(retryState);
+  const retryReading = () => {
+    if (sendError && reading) {
+      sendResults(reading.text); // only the send failed — don't regenerate
+    } else {
+      generateReading(retryState);
+    }
+  };
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
       <Header />
-      {step === "generating" ? (
+      {step === "name" ? (
+        <NameScreen name={clientName} setName={setClientName} onContinue={() => setStep("intake")} />
+      ) : step === "generating" ? (
         <GeneratingScreen stage={generatingStage} />
-      ) : step === "reading" ? (
-        <ReadingScreen reading={reading} error={readingError} onRetry={retryReading} />
+      ) : step === "done" ? (
+        <DoneScreen name={clientName} />
+      ) : step === "error" ? (
+        <ErrorScreen error={readingError} sendError={sendError} onRetry={retryReading} />
       ) : (
         <DomainScreen
           key={domainIndex}
