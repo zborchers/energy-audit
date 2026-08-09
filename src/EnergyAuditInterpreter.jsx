@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { LIFE_INVENTORY_DOMAINS } from "./lifeInventoryData.js";
 import { ENERGY_AUDIT_SYSTEM_PROMPT } from "./energyAuditSystemPrompt.js";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 
 const SANS = "'Plus Jakarta Sans','system-ui',sans-serif";
 const SERIF = "'Crimson Text','Georgia',serif";
@@ -198,32 +199,6 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
               onChange={v => setTextField("_detail", v)}
             />
           )}
-
-          {/* Formative Years: two age windows, each with its own groups + own detail box */}
-          {domain.ageWindows && domain.ageWindows.map((window, wi) => (
-            <div key={wi}>
-              <div style={{ fontSize: "12px", fontWeight: 700, color: c.accent, textTransform: "uppercase", letterSpacing: "0.06em", margin: wi === 0 ? "0 0 1rem" : "1.6rem 0 1rem", borderTop: wi > 0 ? `1px solid ${c.borderMid}` : "none", paddingTop: wi > 0 ? "1.4rem" : "0" }}>
-                {window.rangeLabel}
-              </div>
-              {window.groups.map(g => (
-                <OptionGroup
-                  key={g.key}
-                  group={g}
-                  stateKey={g.key}
-                  selections={selections}
-                  toggle={toggle}
-                  loading={loading}
-                  followupValue={undefined}
-                  setFollowup={setTextField}
-                />
-              ))}
-              <DetailBox
-                label={window.detailLabel}
-                value={selections[window.detailKey]}
-                onChange={v => setTextField(window.detailKey, v)}
-              />
-            </div>
-          ))}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginTop: "1rem" }}>
@@ -254,9 +229,10 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
 
 async function callAPI(messages, maxTokens = 3000) {
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxAttempts = 2; // fewer retries now — each attempt can legitimately take a while
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // fail fast — don't let one attempt eat the whole budget
+    const timeoutId = setTimeout(() => controller.abort(), 110000); // generous — this generates the entire comprehensive Reading in one call, not a short reply
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -269,7 +245,7 @@ async function callAPI(messages, maxTokens = 3000) {
         }),
       });
       clearTimeout(timeoutId);
-      if (res.status === 529 && attempt < 2) {
+      if (res.status === 529 && attempt < maxAttempts - 1) {
         await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
         continue;
       }
@@ -279,7 +255,7 @@ async function callAPI(messages, maxTokens = 3000) {
     } catch (e) {
       clearTimeout(timeoutId);
       lastErr = e;
-      if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+      if (attempt < maxAttempts - 1) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
     }
   }
   throw lastErr;
@@ -428,7 +404,13 @@ function EnergeticDirectionAction() {
   );
 }
 
-function GeneratingScreen() {
+function GeneratingScreen({ stage }) {
+  const messages = {
+    1: "Finding the anchor underneath the pattern.",
+    2: "Working through all ten domains, one at a time.",
+    3: "Bringing it together and closing the Reading.",
+  };
+
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
       <div style={{ textAlign: "center" }}>
@@ -437,15 +419,50 @@ function GeneratingScreen() {
           <div className="thinking-dot" style={{ animationDelay: "0.15s" }} />
           <div className="thinking-dot" style={{ animationDelay: "0.3s" }} />
         </div>
-        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, marginBottom: "0.5rem" }}>
-          Reading everything you shared.
+        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, marginBottom: "0.5rem", maxWidth: "360px" }}>
+          {messages[stage]}
         </div>
-        <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, fontStyle: "italic" }}>
-          This is a full, comprehensive Reading — it can take a little while.
+        <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS }}>
+          Part {stage} of 3
         </div>
       </div>
     </div>
   );
+}
+
+async function downloadReadingAsDocx(readingText) {
+  const paragraphs = readingText
+    .split("\n\n")
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => new Paragraph({
+      children: [new TextRun({ text: p, font: "Georgia", size: 24 })],
+      spacing: { after: 240 },
+    }));
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({
+          text: "Your Energy Audit Reading",
+          heading: HeadingLevel.TITLE,
+          spacing: { after: 120 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "Voltage Wellness", italics: true, size: 20, color: "5C5147" })],
+          spacing: { after: 480 },
+        }),
+        ...paragraphs,
+      ],
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "energy-audit-reading.docx";
+  link.click();
 }
 
 function ReadingScreen({ reading, error, onRetry }) {
@@ -466,8 +483,16 @@ function ReadingScreen({ reading, error, onRetry }) {
           </div>
         ) : (
           <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
-              Your Energy Audit Reading
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, fontFamily: SANS }}>
+                Your Energy Audit Reading
+              </div>
+              <button
+                onClick={() => downloadReadingAsDocx(reading.text)}
+                style={{ background: "transparent", border: `1.5px solid ${c.borderMid}`, borderRadius: "6px", padding: "7px 16px", fontSize: "12px", fontFamily: SANS, fontWeight: 700, color: c.textPrimary, cursor: "pointer", letterSpacing: "0.02em" }}
+              >
+                Download as Word document
+              </button>
             </div>
             {reading.chakraLocation && <BodyMapWithDownload location={reading.chakraLocation} />}
             {reading.text}
@@ -497,16 +522,6 @@ function formatDomainAnswers(domain, answers) {
     if (a["_detail"] && a["_detail"].trim()) {
       lines.push(`${domain.detailLabel}\n${a["_detail"].trim()}`);
     }
-  }
-
-  if (domain.ageWindows) {
-    domain.ageWindows.forEach(window => {
-      lines.push(`--- ${window.rangeLabel} ---`);
-      window.groups.forEach(describeGroup);
-      if (a[window.detailKey] && a[window.detailKey].trim()) {
-        lines.push(`${window.detailLabel}\n${a[window.detailKey].trim()}`);
-      }
-    });
   }
 
   return lines.join("\n\n");
@@ -644,26 +659,54 @@ export default function EnergyAuditInterpreter() {
     if (domainIndex > 0) setDomainIndex(domainIndex - 1);
   };
 
-  const generateReading = async () => {
+  const [generatingStage, setGeneratingStage] = useState(1);
+  const [retryState, setRetryState] = useState(null);
+
+  const generateReading = async (resume) => {
     setStep("generating");
     setReadingError(false);
     setLoading(true);
-    const compiled = compileFullInventory(answers);
-    const requestMsg = {
-      role: "user",
-      content: `Here is the person's full Life Inventory:\n\n${compiled}\n\nGenerate the complete Reading now.`,
-    };
+
+    let history, stage, parts;
+    if (resume) {
+      ({ history, stage, parts } = resume);
+    } else {
+      const compiled = compileFullInventory(answers);
+      history = [{ role: "user", content: `Here is the person's full Life Inventory:\n\n${compiled}\n\nWrite Part One (The Anchor) now.` }];
+      stage = 1;
+      parts = {};
+    }
+
     try {
-      const raw = await callAPI([requestMsg], 16000);
-      const { cleaned: readingText, location } = parseChakraLocation(raw);
-      setReading({ text: readingText, chakraLocation: location });
+      if (stage === 1) {
+        setGeneratingStage(1);
+        const part1 = await callAPI(history, 3000);
+        parts.partOne = part1;
+        history = [...history, { role: "assistant", content: part1 }, { role: "user", content: "Now write Part Two (Domain by Domain, all ten domains)." }];
+        stage = 2;
+      }
+      if (stage === 2) {
+        setGeneratingStage(2);
+        const part2 = await callAPI(history, 6000);
+        parts.partTwo = part2;
+        history = [...history, { role: "assistant", content: part2 }, { role: "user", content: "Now write Part Three (Where to Start, and Close), including the chakra location marker at the end." }];
+        stage = 3;
+      }
+      setGeneratingStage(3);
+      const part3raw = await callAPI(history, 2000);
+      const { cleaned: part3, location } = parseChakraLocation(part3raw);
+      const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
+      setReading({ text: fullText, chakraLocation: location });
       setStep("reading");
     } catch {
+      setRetryState({ history, stage, parts });
       setReadingError(true);
       setStep("reading");
     }
     setLoading(false);
   };
+
+  const retryReading = () => generateReading(retryState);
 
   if (checkingAccess) {
     return (
@@ -705,9 +748,9 @@ export default function EnergyAuditInterpreter() {
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
       <Header />
       {step === "generating" ? (
-        <GeneratingScreen />
+        <GeneratingScreen stage={generatingStage} />
       ) : step === "reading" ? (
-        <ReadingScreen reading={reading} error={readingError} onRetry={generateReading} />
+        <ReadingScreen reading={reading} error={readingError} onRetry={retryReading} />
       ) : (
         <DomainScreen
           key={domainIndex}
