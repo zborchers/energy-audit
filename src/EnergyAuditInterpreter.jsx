@@ -254,16 +254,20 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
 async function callAPI(messages, maxTokens = 3000) {
   let lastErr;
   for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // fail fast — don't let one attempt eat the whole budget
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           max_tokens: maxTokens,
           system: ENERGY_AUDIT_SYSTEM_PROMPT,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
+      clearTimeout(timeoutId);
       if (res.status === 529 && attempt < 2) {
         await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
         continue;
@@ -272,23 +276,12 @@ async function callAPI(messages, maxTokens = 3000) {
       const data = await res.json();
       return data.content.map(b => b.text || "").join("");
     } catch (e) {
+      clearTimeout(timeoutId);
       lastErr = e;
       if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
     }
   }
   throw lastErr;
-}
-
-function parseAuditStatus(text) {
-  const m = text.match(/\[\[AUDIT_STATUS progress=(\d+) next=(ask|ready)\]\]/);
-  const cleaned = text.replace(/\[\[AUDIT_STATUS[^\]]*\]\]/, "").trim();
-  if (!m) return { cleaned, progress: null, next: null };
-  return { cleaned, progress: parseInt(m[1], 10), next: m[2] };
-}
-
-function parseQuestionTag(text) {
-  const m = text.match(/\[\[Q\]\]([\s\S]*?)\[\[\/Q\]\]/);
-  return { hasQuestion: !!m, questionText: m ? m[1].trim() : null };
 }
 
 function parseChakraLocation(text) {
@@ -434,98 +427,52 @@ function EnergeticDirectionAction() {
   );
 }
 
-function ConversationScreen({ messages, loading, progress, onSend }) {
-  const [draft, setDraft] = useState("");
-  const endRef = useRef(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [messages, loading]);
-
-  const send = () => {
-    if (!draft.trim() || loading) return;
-    onSend(draft.trim());
-    setDraft("");
-  };
-
-  const visible = messages.filter(m => !m.hidden);
-
+function GeneratingScreen() {
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-      <div style={{ maxWidth: "780px", width: "100%", margin: "0 auto", padding: "0.85rem 1.5rem 0" }}>
-        <div style={{ height: "4px", background: c.bgInput, borderRadius: "2px", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progress}%`, background: c.accent, transition: "width 0.4s ease" }} />
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "1rem" }}>
+          <div className="thinking-dot" style={{ animationDelay: "0s" }} />
+          <div className="thinking-dot" style={{ animationDelay: "0.15s" }} />
+          <div className="thinking-dot" style={{ animationDelay: "0.3s" }} />
         </div>
-        <div style={{ fontSize: "11px", color: c.textMuted, marginTop: "0.4rem", fontFamily: SANS, letterSpacing: "0.04em" }}>
-          THE ENERGETIC ANCHOR ANALYSIS
+        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, marginBottom: "0.5rem" }}>
+          Reading everything you shared.
         </div>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
-        <div style={{ maxWidth: "780px", margin: "0 auto", paddingTop: "1.5rem" }}>
-          {visible.map((m, i) => (
-            <div key={i} style={{ marginBottom: "2rem" }}>
-              {m.role === "user" ? (
-                <div style={{ background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "12px", padding: "1rem 1.25rem", fontSize: "16px", fontFamily: SERIF, lineHeight: 1.7 }}>
-                  {m.content}
-                </div>
-              ) : m.isReading ? (
-                <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
-                    Your Energetic Anchor Reading
-                  </div>
-                  {m.chakraLocation && <BodyMapWithDownload location={m.chakraLocation} />}
-                  {m.content}
-                  <EnergeticDirectionAction />
-                </div>
-              ) : (
-                <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
-                  {m.displayReflection}
-                  {m.displayQuestion && (
-                    <div style={{ marginTop: "1rem", fontWeight: 600, color: c.accent, borderLeft: `2px solid ${c.accent}`, paddingLeft: "1rem" }}>
-                      {m.displayQuestion}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-          {loading && (
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.5rem 0" }}>
-              <div style={{ display: "flex", gap: "5px" }}>
-                <div className="thinking-dot" style={{ animationDelay: "0s" }} />
-                <div className="thinking-dot" style={{ animationDelay: "0.15s" }} />
-                <div className="thinking-dot" style={{ animationDelay: "0.3s" }} />
-              </div>
-              <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, fontStyle: "italic" }}>
-                Reading what you shared…
-              </div>
-            </div>
-          )}
-          <div ref={endRef} />
+        <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, fontStyle: "italic" }}>
+          This is a full, comprehensive Reading — it can take a little while.
         </div>
       </div>
-      <div style={{ maxWidth: "780px", width: "100%", margin: "0 auto", padding: "1rem 1.5rem 1.5rem" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "10px", padding: "10px 14px" }}>
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Type your answer..."
-            rows={2}
-            autoFocus
-            style={{ background: "transparent", border: "none", outline: "none", color: c.textPrimary, fontSize: "17px", fontFamily: SERIF, lineHeight: 1.6, resize: "none", width: "100%" }}
-          />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button
-              onClick={send}
-              disabled={!draft.trim() || loading}
-              style={{ background: draft.trim() && !loading ? c.accent : c.accentMid, border: "none", borderRadius: "4px", padding: "7px 18px", cursor: draft.trim() && !loading ? "pointer" : "default", color: draft.trim() && !loading ? "#fff" : c.textMuted, fontSize: "13px", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.04em" }}
-            >
-              Send &rarr;
-            </button>
+    </div>
+  );
+}
+
+function ReadingScreen({ reading, error, onRetry }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "1.5rem 0 2.5rem" }}>
+        {error ? (
+          <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <span style={{ color: c.accentPop, fontSize: "15px" }}>There was a connection error generating your Reading.</span>
+              <button
+                onClick={onRetry}
+                style={{ background: c.accent, border: "none", borderRadius: "4px", padding: "8px 18px", fontSize: "13px", fontFamily: SANS, fontWeight: 700, color: "#fff", cursor: "pointer", letterSpacing: "0.03em" }}
+              >
+                Try again
+              </button>
+            </div>
           </div>
-        </div>
-        <Disclaimer />
+        ) : (
+          <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
+              Your Energy Audit Reading
+            </div>
+            {reading.chakraLocation && <BodyMapWithDownload location={reading.chakraLocation} />}
+            {reading.text}
+            <EnergeticDirectionAction />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -583,7 +530,7 @@ function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
           A complete map of where your energy is going.
         </div>
         <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75, marginBottom: "1.75rem" }}>
-          Nine domains of your actual life, a guided conversation that finds the real anchor beneath the pattern, and a full written Reading built to go as deep as the material allows — not a quick quiz, a real one-time investment in seeing the whole picture clearly.
+          Nine domains of your actual life, examined in genuine depth, with a full written Reading that traces the real anchor beneath the pattern and goes as deep as the material allows — not a quick quiz, a real one-time investment in seeing the whole picture clearly.
         </div>
         {cancelled && (
           <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
@@ -603,7 +550,7 @@ function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
           {checkingOut ? "Redirecting…" : "Start the Energy Audit — $44"}
         </button>
         <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS, marginTop: "0.6rem" }}>
-          One-time. Full nine-domain Life Inventory, guided conversation, and complete Reading.
+          One-time. Full nine-domain Life Inventory and a complete, comprehensive Reading.
         </div>
         <Disclaimer />
       </div>
@@ -678,110 +625,43 @@ export default function EnergyAuditInterpreter() {
     }
   };
 
-  const [step, setStep] = useState("intake"); // intake | conversation
+  const [step, setStep] = useState("intake"); // intake | generating | reading
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [messages, setMessages] = useState([]);
+  const [reading, setReading] = useState(null); // { text, chakraLocation }
+  const [readingError, setReadingError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(5);
-  const [turnCount, setTurnCount] = useState(0);
-  const MAX_TURNS = 8; // hard safety cap — see system prompt for the matching instruction
 
   const advanceDomain = () => {
     if (domainIndex < LIFE_INVENTORY_DOMAINS.length - 1) {
       setDomainIndex(domainIndex + 1);
     } else {
-      beginAnchorAnalysis();
+      generateReading();
     }
   };
   const backDomain = () => {
     if (domainIndex > 0) setDomainIndex(domainIndex - 1);
   };
 
-  const beginAnchorAnalysis = async () => {
-    setStep("conversation");
+  const generateReading = async () => {
+    setStep("generating");
+    setReadingError(false);
     setLoading(true);
     const compiled = compileFullInventory(answers);
-    const kickoff = {
+    const requestMsg = {
       role: "user",
-      content: `Here is the person's full Life Inventory:\n\n${compiled}\n\nBegin the Energetic Anchor Analysis conversation now — ask your first question.`,
-      hidden: true,
+      content: `Here is the person's full Life Inventory:\n\n${compiled}\n\nGenerate the complete Reading now.`,
     };
-    const newMessages = [kickoff];
-    setMessages(newMessages);
     try {
-      const raw = await callAPI(newMessages);
-      handleModelTurn(raw, newMessages);
+      const raw = await callAPI([requestMsg], 16000);
+      const { cleaned: readingText, location } = parseChakraLocation(raw);
+      setReading({ text: readingText, chakraLocation: location });
+      setStep("reading");
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "There was a connection error. Please try again.", displayReflection: "There was a connection error. Please try again." }]);
-      setLoading(false);
-    }
-  };
-
-  const handleModelTurn = (raw, priorMessages) => {
-    const { cleaned, progress: p, next } = parseAuditStatus(raw);
-    const { hasQuestion, questionText } = parseQuestionTag(cleaned);
-    const reflection = cleaned.replace(/\[\[Q\]\][\s\S]*?\[\[\/Q\]\]/, "").trim();
-
-    setTurnCount(t => t + 1);
-    if (p !== null) setProgress(p);
-
-    const forceReady = turnCount + 1 >= MAX_TURNS;
-
-    if ((next === "ready" || forceReady) && !hasQuestion) {
-      // Model signaled ready with no further question — this response IS
-      // effectively the closing turn; request the Reading next.
-      requestReading([...priorMessages, { role: "assistant", content: raw }]);
-      return;
-    }
-
-    const assistantMsg = {
-      role: "assistant",
-      content: raw,
-      displayReflection: reflection,
-      displayQuestion: hasQuestion ? questionText : null,
-    };
-    setMessages([...priorMessages, assistantMsg]);
-    setLoading(false);
-
-    if (forceReady && hasQuestion) {
-      // Safety cap hit but model still asked — let this question get
-      // answered once more, then force the reading on the next turn.
-    }
-  };
-
-  const requestReading = async (messagesForApi) => {
-    setLoading(true);
-    const readingRequest = {
-      role: "user",
-      content: "Write the final Reading now. Do not include a status marker on this response.",
-      hidden: true,
-    };
-    const withRequest = [...messagesForApi, readingRequest];
-    try {
-      const raw = await callAPI(withRequest, 16000);
-      const { cleaned: withoutStatus } = parseAuditStatus(raw);
-      const { cleaned: readingText, location } = parseChakraLocation(withoutStatus);
-      setMessages([...withRequest.filter(m => !m.hidden), { role: "assistant", content: readingText, isReading: true, chakraLocation: location }]);
-      setProgress(100);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "There was a connection error generating your Reading. Please try again.", displayReflection: "There was a connection error generating your Reading. Please try again." }]);
+      setReadingError(true);
+      setStep("reading");
     }
     setLoading(false);
-  };
-
-  const sendAnswer = async (text) => {
-    const userMsg = { role: "user", content: text };
-    const withUser = [...messages, userMsg];
-    setMessages(withUser);
-    setLoading(true);
-    try {
-      const raw = await callAPI(withUser);
-      handleModelTurn(raw, withUser);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "There was a connection error. Please try again.", displayReflection: "There was a connection error. Please try again." }]);
-      setLoading(false);
-    }
   };
 
   if (checkingAccess) {
@@ -823,8 +703,10 @@ export default function EnergyAuditInterpreter() {
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
       <Header />
-      {step === "conversation" ? (
-        <ConversationScreen messages={messages} loading={loading} progress={progress} onSend={sendAnswer} />
+      {step === "generating" ? (
+        <GeneratingScreen />
+      ) : step === "reading" ? (
+        <ReadingScreen reading={reading} error={readingError} onRetry={generateReading} />
       ) : (
         <DomainScreen
           key={domainIndex}
