@@ -320,14 +320,11 @@ function GeneratingScreen({ stage }) {
   );
 }
 
-function ErrorScreen({ error, sendError, onRetry }) {
-  const message = sendError
-    ? "Your answers were analyzed successfully, but there was a connection error sending them to Zach."
-    : "There was a connection error generating your analysis.";
+function ErrorScreen({ onRetry }) {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
       <div style={{ maxWidth: "480px", textAlign: "center" }}>
-        <div style={{ color: c.accentPop, fontSize: "15px", fontFamily: SANS, marginBottom: "1.25rem" }}>{message}</div>
+        <div style={{ color: c.accentPop, fontSize: "15px", fontFamily: SANS, marginBottom: "1.25rem" }}>There was a connection error generating your analysis.</div>
         <button
           onClick={onRetry}
           style={{ background: c.accent, border: "none", borderRadius: "6px", padding: "10px 24px", fontSize: "14px", fontFamily: SANS, fontWeight: 700, color: "#fff", cursor: "pointer", letterSpacing: "0.03em" }}
@@ -339,20 +336,100 @@ function ErrorScreen({ error, sendError, onRetry }) {
   );
 }
 
-function DoneScreen({ name }) {
+// The model writes one continuous document, but only Parts One, Two, and
+// the "Where to Start" half of Part Three are meant for the client to see —
+// "Notes for Session One" is Zach's private coaching prep. Split there.
+function splitClientAndFullText(fullText) {
+  const marker = "# Notes for Session One";
+  const idx = fullText.indexOf(marker);
+  if (idx === -1) return { clientText: fullText, fullText };
+  return { clientText: fullText.slice(0, idx).trim(), fullText };
+}
+
+function parseReportStructure(text) {
+  const lines = text.split("\n");
+  const blocks = [];
+  let currentParagraph = [];
+
+  const flushParagraph = () => {
+    if (currentParagraph.length) {
+      const combined = currentParagraph.join(" ").trim();
+      if (combined) blocks.push({ type: "p", text: combined });
+      currentParagraph = [];
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("### ")) {
+      flushParagraph();
+      blocks.push({ type: "h3", text: trimmed.slice(4).trim() });
+    } else if (trimmed.startsWith("## ")) {
+      flushParagraph();
+      blocks.push({ type: "h2", text: trimmed.slice(3).trim() });
+    } else if (trimmed.startsWith("# ")) {
+      flushParagraph();
+      blocks.push({ type: "h1", text: trimmed.slice(2).trim() });
+    } else if (trimmed === "") {
+      flushParagraph();
+    } else {
+      currentParagraph.push(trimmed);
+    }
+  }
+  flushParagraph();
+  return blocks;
+}
+
+function ReportContent({ text }) {
+  const blocks = parseReportStructure(text);
   return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
-      <div style={{ maxWidth: "480px", textAlign: "center" }}>
-        <div style={{ fontSize: "24px", fontWeight: 700, color: c.textPrimary, marginBottom: "1rem", fontFamily: SANS, letterSpacing: "-0.01em" }}>
-          Thank you, {name.split(" ")[0]}.
+    <>
+      {blocks.map((b, i) => {
+        if (b.type === "h1") {
+          return (
+            <div key={i} style={{ fontSize: "23px", fontWeight: 700, fontFamily: SANS, color: c.textPrimary, letterSpacing: "-0.01em", marginTop: i === 0 ? 0 : "2.5rem", marginBottom: "1.1rem", paddingBottom: "0.6rem", borderBottom: `1px solid ${c.borderMid}` }}>
+              {b.text}
+            </div>
+          );
+        }
+        if (b.type === "h2") {
+          return (
+            <div key={i} style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
+              {b.text}
+            </div>
+          );
+        }
+        if (b.type === "h3") {
+          const isDrain = b.text.toLowerCase().includes("drain");
+          return (
+            <div key={i} style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: SANS, color: isDrain ? c.accentPop : c.accent, marginTop: "1.1rem", marginBottom: "0.4rem" }}>
+              {b.text}
+            </div>
+          );
+        }
+        return (
+          <p key={i} style={{ margin: "0 0 1.15rem", lineHeight: 1.85, fontFamily: SERIF, fontSize: "17px" }}>
+            {b.text}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+function ReadingScreen({ clientText }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "1.5rem 0 2.5rem" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "0.5rem", fontFamily: SANS }}>
+          Your Analysis
         </div>
-        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75 }}>
-          Your intake is complete, and everything you shared has been sent directly to Zach to prepare for your session together. There's nothing further you need to do — he'll follow up to schedule your next step.
-        </div>
+        <ReportContent text={clientText} />
       </div>
     </div>
   );
 }
+
 
 function formatDomainAnswers(domain, answers) {
   const a = answers[domain.id] || {};
@@ -410,26 +487,20 @@ export default function EnergyAuditInterpreter() {
   const [generatingStage, setGeneratingStage] = useState(1);
   const [retryState, setRetryState] = useState(null);
 
-  const [sendError, setSendError] = useState(false);
-
-  const sendResults = async (analysisText) => {
-    setSendError(false);
-    try {
-      const res = await fetch("/api/send-results", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientName,
-          rawAnswers: compileFullInventory(answers),
-          analysisText,
-        }),
-      });
-      if (!res.ok) throw new Error("Send failed");
-      setStep("done");
-    } catch {
-      setSendError(true);
-      setStep("error");
-    }
+  // Fire-and-forget: emails the full analysis (including the private
+  // Notes for Session One) to Zach. Failure here — e.g. Resend isn't
+  // configured yet — must never block or alarm the client; they've
+  // already gotten what they came for either way.
+  const sendResults = (analysisText) => {
+    fetch("/api/send-results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName,
+        rawAnswers: compileFullInventory(answers),
+        analysisText,
+      }),
+    }).catch(() => {}); // intentionally silent from the client's perspective
   };
 
   const generateReading = async (resume) => {
@@ -465,8 +536,10 @@ export default function EnergyAuditInterpreter() {
       setGeneratingStage(3);
       const part3 = await callAPI(history, 2000);
       const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
-      setReading({ text: fullText });
-      await sendResults(fullText);
+      const { clientText } = splitClientAndFullText(fullText);
+      setReading({ clientText, fullText });
+      setStep("reading");
+      sendResults(fullText); // not awaited — client doesn't wait on this
     } catch {
       setRetryState({ history, stage, parts });
       setReadingError(true);
@@ -475,13 +548,7 @@ export default function EnergyAuditInterpreter() {
     setLoading(false);
   };
 
-  const retryReading = () => {
-    if (sendError && reading) {
-      sendResults(reading.text); // only the send failed — don't regenerate
-    } else {
-      generateReading(retryState);
-    }
-  };
+  const retryReading = () => generateReading(retryState);
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
@@ -490,10 +557,10 @@ export default function EnergyAuditInterpreter() {
         <NameScreen name={clientName} setName={setClientName} onContinue={() => setStep("intake")} />
       ) : step === "generating" ? (
         <GeneratingScreen stage={generatingStage} />
-      ) : step === "done" ? (
-        <DoneScreen name={clientName} />
+      ) : step === "reading" ? (
+        <ReadingScreen clientText={reading.clientText} />
       ) : step === "error" ? (
-        <ErrorScreen error={readingError} sendError={sendError} onRetry={retryReading} />
+        <ErrorScreen onRetry={retryReading} />
       ) : (
         <DomainScreen
           key={domainIndex}
