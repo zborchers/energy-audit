@@ -36,6 +36,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         label: "How much unstructured time do you have in a normal week — time with no obligation attached to it?",
         options: ["None", "Under an hour", "A few hours", "Most evenings/weekends", "Plenty"],
       },
+      {
+        key: "day_most_drained",
+        type: "singleSelect",
+        label: "When during the day do you feel most drained?",
+        options: ["First thing in the morning", "Midday", "Late afternoon", "By evening", "It's constant — it doesn't really lift"],
+      },
     ],
     detailLabel: "Anything else about how your time actually gets spent that feels important? (optional)",
   },
@@ -76,6 +82,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         ],
         followupTrigger: { values: ["Something else is going on here"], key: "food_drink_other_detail", label: "What's actually going on? (optional)" },
       },
+      {
+        key: "tension_location",
+        type: "multiselect",
+        label: "Where in your body do you tend to hold tension or stress?",
+        options: ["Jaw or teeth-grinding", "Shoulders", "Chest", "Stomach", "Lower back", "Neck", "I don't really notice"],
+      },
     ],
     detailLabel: "Anything else about your physical body worth naming? (optional)",
   },
@@ -107,6 +119,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         options: ["Yes", "No", "Not sure"],
         followupTrigger: { values: ["Yes"], key: "media_know_not_serving_detail", label: "What is it? (optional)" },
       },
+      {
+        key: "phone_compulsiveness",
+        type: "singleSelect",
+        label: "How often do you reach for your phone without really deciding to?",
+        options: ["Rarely", "Sometimes", "Often", "Almost constantly"],
+      },
     ],
     detailLabel: "Anything else about your media/information intake? (optional)",
   },
@@ -137,6 +155,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         label: "Is there a relationship right now that's quietly costing you energy?",
         options: ["Yes", "No", "Not sure"],
         followupTrigger: { values: ["Yes"], key: "relationship_costing_energy_detail", label: "What's the situation? (optional)" },
+      },
+      {
+        key: "relational_role",
+        type: "multiselect",
+        label: "Is there a role you tend to play in your relationships, whether you chose it or not?",
+        options: ["The fixer", "The listener", "The one who's always fine", "The one who starts things", "The one who keeps the peace", "I'm not sure"],
       },
     ],
     detailLabel: "Anything else about your relationships worth naming? (optional)",
@@ -174,6 +198,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         options: ["Yes", "No", "Not sure"],
         followupTrigger: { values: ["Yes"], key: "unprocessed_past_year_detail", label: "What is it, if you're willing to share? (optional)" },
       },
+      {
+        key: "who_you_let_in",
+        type: "multiselect",
+        label: "When things get hard, who do you actually let in?",
+        options: ["Partner or spouse", "A close friend", "Family", "A therapist or other professional", "No one — I handle it alone"],
+      },
     ],
     detailLabel: "Anything else about how you move through hard things? (optional)",
   },
@@ -200,6 +230,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         label: "Where do you think that belief came from?",
         options: ["Family of origin", "Religion/upbringing", "A specific past experience", "Culture/society at large", "I'm not sure"],
         followupTrigger: { values: ["A specific past experience"], key: "belief_origin_detail", label: "What happened? (optional)" },
+      },
+      {
+        key: "self_talk_on_mistake",
+        type: "singleSelect",
+        label: "When you make a mistake, how do you talk to yourself?",
+        options: ["Harshly, like I failed", "Neutrally, like it's just information", "Kindly, like I would to someone I love", "It depends a lot on the mistake"],
       },
     ],
     detailLabel: "Is there a belief you're aware of that you know isn't true but still run your life by? (optional)",
@@ -228,6 +264,12 @@ export const LIFE_INVENTORY_DOMAINS = [
         options: ["Yes", "No", "Not sure"],
         followupTrigger: { values: ["Yes"], key: "awakening_turning_point_detail", label: "What happened? (optional)" },
       },
+      {
+        key: "relationship_to_uncertainty",
+        type: "singleSelect",
+        label: "How do you tend to relate to uncertainty — not knowing how something will turn out?",
+        options: ["I need to control it", "I get anxious but push through", "I've learned to sit with it", "I actually find it exciting"],
+      },
     ],
     // This field is diagnostic of starting language, not scored — kept as
     // the domain's open detail field rather than a separate question.
@@ -252,104 +294,102 @@ export const LIFE_INVENTORY_DOMAINS = [
         label: "Does your physical space reflect who you actually are, or who you used to be / think you should be?",
         options: ["Reflects who I am now", "Reflects an old version of me", "I've never thought about it", "Reflects someone else's taste or needs, not mine"],
       },
+      {
+        key: "home_avoided_task",
+        type: "singleSelect",
+        label: "Is there something in your home you keep meaning to deal with but haven't?",
+        options: ["Yes", "No", "Not sure"],
+      },
     ],
     detailLabel: "Anything else about your environment worth naming? (optional)",
   },
 
   {
-    id: "formative_years",
+    id: "formative_years_early",
     uiTitle: "Growing Up",
-    chakraWeight: ["root", "sacral"],
-    // Deepest domain in the audit — split into two explicit age windows,
-    // rendered as one continuous screen with a visual break between them.
-    ageWindows: [
+    chakraWeight: ["root"],
+    groups: [
       {
-        rangeLabel: "Ages 0–7 — what you absorbed about safety, belonging, and worth",
-        groups: [
-          {
-            key: "money_safety_early",
-            type: "multiselect",
-            label: "What was your family's relationship to money and safety like when you were very young?",
-            options: [
-              "Scarcity, or a sense that there was never enough", "Money caused conflict or tension",
-              "Money was controlled tightly by one person", "Stable and rarely discussed",
-              "Steady and safe", "I honestly don't know — it wasn't visible to me as a child",
-            ],
-          },
-          {
-            key: "family_role",
-            type: "multiselect",
-            label: "What role did you find yourself playing in your family, even before you could have named it?",
-            options: [
-              "The responsible one", "The peacemaker", "The one who stayed small",
-              "The caretaker of a parent's feelings", "The achiever/golden child",
-              "The one who got overlooked", "The one who took the blame", "I'm not sure",
-            ],
-          },
-          {
-            key: "security_earned",
-            type: "singleSelect",
-            label: "As a young child, did you feel like your place in your family was secure, or like you had to earn it?",
-            options: [
-              "Secure, no question", "Mostly secure", "I had to behave a certain way to keep it",
-              "I had to earn it constantly", "I never felt fully secure",
-            ],
-          },
+        key: "money_safety_early",
+        type: "multiselect",
+        label: "What was your family's relationship to money and safety like when you were very young?",
+        options: [
+          "Scarcity, or a sense that there was never enough", "Money caused conflict or tension",
+          "Money was controlled tightly by one person", "Stable and rarely discussed",
+          "Steady and safe", "I honestly don't know — it wasn't visible to me as a child",
         ],
-        // Deliberately open-ended and unscored — often the richest answer in
-        // the whole audit. Rendered as this window's own detail box rather
-        // than folded into the domain-level one at the bottom.
-        detailKey: "safety_belonging_worth_detail",
-        detailLabel: "Before you had words for it — what did you learn about whether the world was safe, whether you belonged, or whether your needs would actually be met? (optional)",
       },
       {
-        rangeLabel: "Ages 7–14 — what you learned about relationships, power, and your own creative and emotional life",
-        groups: [
-          {
-            key: "peer_relationships",
-            type: "multiselect",
-            label: "How would you describe your friendships and peer relationships during these years?",
-            options: [
-              "I was often left out or rejected", "I learned to please people to keep them close",
-              "I felt confident and connected", "I withdrew and kept to myself",
-              "I became the one who kept the peace in the group", "I don't remember much from this period",
-            ],
-          },
-          {
-            key: "creativity_response",
-            type: "singleSelect",
-            label: "Was your creativity — art, play, imagination, self-expression — encouraged or discouraged during this time?",
-            options: [
-              "Actively encouraged", "Mostly ignored", "Actively discouraged or mocked",
-              "Only valued when it produced results (grades, recognition, performance)", "Not sure",
-            ],
-          },
-          {
-            key: "feelings_treatment",
-            type: "singleSelect",
-            label: "Looking back at this age, did you learn that your feelings mattered, or that they were inconvenient / too much / better kept private?",
-            options: ["They mattered", "They were tolerated but not really welcomed", "They were treated as too much", "I learned to keep them private", "Not sure"],
-          },
-          {
-            key: "boundary_violation",
-            type: "singleSelect",
-            label: "Was there anything in this window — physically, emotionally, or otherwise — where a boundary of yours wasn't respected?",
-            options: ["Yes", "No", "Prefer not to say"],
-            // Deliberately NO follow-up text field, per spec — if yes, this
-            // gets held for the Part 2 conversation to approach with care,
-            // never pressed for detail in the static intake.
-            noFollowup: true,
-          },
+        key: "family_role",
+        type: "multiselect",
+        label: "What role did you find yourself playing in your family, even before you could have named it?",
+        options: [
+          "The responsible one", "The peacemaker", "The one who stayed small",
+          "The caretaker of a parent's feelings", "The achiever/golden child",
+          "The one who got overlooked", "The one who took the blame", "I'm not sure",
         ],
-        detailKey: "formative_pattern_detail",
-        detailLabel: "What's a pattern you can trace back to this age — people-pleasing, rebellion, staying invisible, performing for approval, anything else? (optional)",
+      },
+      {
+        key: "security_earned",
+        type: "singleSelect",
+        label: "As a young child, did you feel like your place in your family was secure, or like you had to earn it?",
+        options: [
+          "Secure, no question", "Mostly secure", "I had to behave a certain way to keep it",
+          "I had to earn it constantly", "I never felt fully secure",
+        ],
       },
     ],
+    // Deliberately open-ended and unscored — often the richest answer in
+    // the whole audit.
+    detailLabel: "Before you had words for it — what did you learn about whether the world was safe, whether you belonged, or whether your needs would actually be met? (optional)",
+  },
+
+  {
+    id: "formative_years_later",
+    uiTitle: "Growing Up, Continued",
+    chakraWeight: ["sacral"],
+    groups: [
+      {
+        key: "peer_relationships",
+        type: "multiselect",
+        label: "How would you describe your friendships and peer relationships during these years?",
+        options: [
+          "I was often left out or rejected", "I learned to please people to keep them close",
+          "I felt confident and connected", "I withdrew and kept to myself",
+          "I became the one who kept the peace in the group", "I don't remember much from this period",
+        ],
+      },
+      {
+        key: "creativity_response",
+        type: "singleSelect",
+        label: "Was your creativity — art, play, imagination, self-expression — encouraged or discouraged during this time?",
+        options: [
+          "Actively encouraged", "Mostly ignored", "Actively discouraged or mocked",
+          "Only valued when it produced results (grades, recognition, performance)", "Not sure",
+        ],
+      },
+      {
+        key: "feelings_treatment",
+        type: "singleSelect",
+        label: "Looking back at this age, did you learn that your feelings mattered, or that they were inconvenient / too much / better kept private?",
+        options: ["They mattered", "They were tolerated but not really welcomed", "They were treated as too much", "I learned to keep them private", "Not sure"],
+      },
+      {
+        key: "boundary_violation",
+        type: "singleSelect",
+        label: "Was there anything in this window — physically, emotionally, or otherwise — where a boundary of yours wasn't respected?",
+        options: ["Yes", "No", "Prefer not to say"],
+        // Deliberately NO follow-up text field, per spec — this is held for
+        // the Reading to approach with care, never pressed for detail here.
+        noFollowup: true,
+      },
+    ],
+    detailLabel: "What's a pattern you can trace back to this age — people-pleasing, rebellion, staying invisible, performing for approval, anything else? (optional)",
   },
 ];
 
 // Later developmental windows (14–21 solar plexus, 21–28 heart, and onward)
-// are intentionally NOT asked statically — see spec note. Part 2's
-// conversation picks these up conversationally, using age-appropriate
-// developmental windows as its interpretive lens, never presuming a window
-// has been reached just because someone has lived past that age.
+// are intentionally NOT asked statically — see spec note. The Reading picks
+// these up only where the person's other answers genuinely point there,
+// never presuming a window has been reached just because someone has lived
+// past that age.
