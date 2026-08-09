@@ -565,9 +565,117 @@ function compileFullInventory(answers) {
     .join("\n\n\n");
 }
 
+// ---- PAYWALL ----
+
+function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+      <div style={{ width: "100%", maxWidth: "480px", textAlign: "center" }}>
+        <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
+          The Energy Audit
+        </div>
+        <div style={{ fontSize: "26px", fontWeight: 700, color: c.textPrimary, marginBottom: "1rem", lineHeight: 1.3, fontFamily: SANS, letterSpacing: "-0.01em" }}>
+          A complete map of where your energy is going.
+        </div>
+        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75, marginBottom: "1.75rem" }}>
+          Nine domains of your actual life, a guided conversation that finds the real anchor beneath the pattern, and a full written Reading built to go as deep as the material allows — not a quick quiz, a real one-time investment in seeing the whole picture clearly.
+        </div>
+        <div style={{ fontSize: "32px", fontWeight: 700, color: c.textPrimary, marginBottom: "0.35rem", fontFamily: SANS }}>
+          $44
+        </div>
+        <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, marginBottom: "1.75rem" }}>
+          One-time. Full nine-domain Life Inventory, guided conversation, and complete Reading.
+        </div>
+        {cancelled && (
+          <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
+            Checkout was cancelled — no charge was made. Ready whenever you are.
+          </div>
+        )}
+        {checkoutError && (
+          <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
+            Something went wrong starting checkout. Please try again.
+          </div>
+        )}
+        <button
+          onClick={onCheckout}
+          disabled={checkingOut}
+          style={{ background: checkingOut ? c.accentMid : c.accent, border: "none", borderRadius: "6px", padding: "14px 32px", fontSize: "15px", color: "#fff", cursor: checkingOut ? "default" : "pointer", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.03em" }}
+        >
+          {checkingOut ? "Redirecting…" : "Start the Energy Audit — $44"}
+        </button>
+        <Disclaimer />
+      </div>
+    </div>
+  );
+}
+
 // ---- MAIN APP ----
 
 export default function EnergyAuditInterpreter() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("session_id");
+    const wasCancelled = url.searchParams.get("checkout") === "cancelled";
+
+    if (wasCancelled) {
+      setCancelled(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    const stored = localStorage.getItem("energyAudit_unlocked");
+    if (stored === "true") {
+      setUnlocked(true);
+      setCheckingAccess(false);
+      return;
+    }
+
+    if (sessionId) {
+      fetch("/api/verify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.paid) {
+            localStorage.setItem("energyAudit_unlocked", "true");
+            setUnlocked(true);
+          }
+          window.history.replaceState({}, "", window.location.pathname);
+          setCheckingAccess(false);
+        })
+        .catch(() => {
+          window.history.replaceState({}, "", window.location.pathname);
+          setCheckingAccess(false);
+        });
+    } else {
+      setCheckingAccess(false);
+    }
+  }, []);
+
+  const startCheckout = async () => {
+    setCheckingOut(true);
+    setCheckoutError(false);
+    try {
+      const res = await fetch("/api/create-checkout-session", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch {
+      setCheckoutError(true);
+      setCheckingOut(false);
+    }
+  };
+
   const [step, setStep] = useState("intake"); // intake | conversation
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -673,6 +781,27 @@ export default function EnergyAuditInterpreter() {
       setLoading(false);
     }
   };
+
+  if (checkingAccess) {
+    return (
+      <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
+        <Header />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", color: c.textMuted, fontFamily: SANS }}>
+          Checking access…
+        </div>
+      </div>
+    );
+  }
+
+  if (!unlocked) {
+    return (
+      <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
+        <Header />
+        <PaywallScreen onCheckout={startCheckout} checkingOut={checkingOut} checkoutError={checkoutError} cancelled={cancelled} />
+        <style>{`* { box-sizing: border-box; } body { margin: 0; } textarea::placeholder { color: rgba(30,26,22,0.3); }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
