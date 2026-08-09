@@ -451,7 +451,7 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
   const visible = messages.filter(m => !m.hidden);
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div style={{ maxWidth: "780px", width: "100%", margin: "0 auto", padding: "0.85rem 1.5rem 0" }}>
         <div style={{ height: "4px", background: c.bgInput, borderRadius: "2px", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${progress}%`, background: c.accent, transition: "width 0.4s ease" }} />
@@ -460,7 +460,7 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
           THE ENERGETIC ANCHOR ANALYSIS
         </div>
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 1.5rem" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
         <div style={{ maxWidth: "780px", margin: "0 auto", paddingTop: "1.5rem" }}>
           {visible.map((m, i) => (
             <div key={i} style={{ marginBottom: "2rem" }}>
@@ -490,10 +490,15 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
             </div>
           ))}
           {loading && (
-            <div style={{ display: "flex", gap: "6px", padding: "0.5rem 0" }}>
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: c.accent, opacity: 0.5 }} />
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: c.accent, opacity: 0.5 }} />
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: c.accent, opacity: 0.5 }} />
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0.5rem 0" }}>
+              <div style={{ display: "flex", gap: "5px" }}>
+                <div className="thinking-dot" style={{ animationDelay: "0s" }} />
+                <div className="thinking-dot" style={{ animationDelay: "0.15s" }} />
+                <div className="thinking-dot" style={{ animationDelay: "0.3s" }} />
+              </div>
+              <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, fontStyle: "italic" }}>
+                Reading what you shared…
+              </div>
             </div>
           )}
           <div ref={endRef} />
@@ -795,7 +800,22 @@ export default function EnergyAuditInterpreter() {
       <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
         <Header />
         <PaywallScreen onCheckout={startCheckout} checkingOut={checkingOut} checkoutError={checkoutError} cancelled={cancelled} />
-        <style>{`* { box-sizing: border-box; } body { margin: 0; } textarea::placeholder { color: rgba(30,26,22,0.3); }`}</style>
+        <style>{`
+          * { box-sizing: border-box; }
+          body { margin: 0; }
+          textarea::placeholder { color: rgba(30,26,22,0.3); }
+          .thinking-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2d5a3d;
+            animation: thinkingBounce 1s ease-in-out infinite;
+          }
+          @keyframes thinkingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-5px); opacity: 1; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -817,7 +837,22 @@ export default function EnergyAuditInterpreter() {
           goBack={{ advance: advanceDomain, back: backDomain }}
         />
       )}
-      <style>{`* { box-sizing: border-box; } body { margin: 0; } textarea::placeholder { color: rgba(30,26,22,0.3); }`}</style>
+      <style>{`
+          * { box-sizing: border-box; }
+          body { margin: 0; }
+          textarea::placeholder { color: rgba(30,26,22,0.3); }
+          .thinking-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2d5a3d;
+            animation: thinkingBounce 1s ease-in-out infinite;
+          }
+          @keyframes thinkingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-5px); opacity: 1; }
+          }
+        `}</style>
     </div>
   );
 }
