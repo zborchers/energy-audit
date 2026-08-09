@@ -93,6 +93,42 @@ export const LIFE_INVENTORY_DOMAINS = [
   },
 
   {
+    id: "health_conditions",
+    uiTitle: "Your Health",
+    chakraWeight: ["root"],
+    groups: [
+      {
+        key: "diagnosis",
+        type: "singleSelect",
+        label: "Do you have a medical diagnosis (or diagnoses)?",
+        options: [
+          "Yes",
+          "No diagnosis, but there's a symptom or health issue I've been dealing with",
+          "No — nothing currently",
+        ],
+        followupTrigger: { values: ["Yes", "No diagnosis, but there's a symptom or health issue I've been dealing with"], key: "diagnosis_detail", label: "What is it, or what are they?" },
+      },
+      {
+        key: "health_region",
+        type: "multiselect",
+        label: "Where in the body is this happening, if anywhere?",
+        options: [
+          "Head", "Neck", "Throat", "Shoulders", "Chest", "Heart",
+          "Upper Back", "Lower Back", "Abdomen", "Gut", "Hips", "Pelvis",
+          "Legs", "Knees", "Ankles", "Feet", "Arms", "Hands", "Somewhere else", "Not applicable",
+        ],
+      },
+      {
+        key: "health_pattern",
+        type: "singleSelect",
+        label: "Is this new, does it come and go, or has it been constant?",
+        options: ["New / recent", "Comes and goes", "Constant / ongoing", "Not applicable"],
+      },
+    ],
+    detailLabel: "Anything else about your health worth naming? (optional)",
+  },
+
+  {
     id: "media_diet",
     uiTitle: "What You Take In",
     chakraWeight: ["sacral", "throat"],
