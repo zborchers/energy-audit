@@ -261,127 +261,6 @@ async function callAPI(messages, maxTokens = 3000) {
   throw lastErr;
 }
 
-function parseChakraLocation(text) {
-  const m = text.match(/\[\[CHAKRA_LOCATION\s+primary=(\w+)\s+secondary=(\w+)\]\]/);
-  const cleaned = text.replace(/\[\[CHAKRA_LOCATION[^\]]*\]\]/, "").trim();
-  if (!m) return { cleaned, location: null };
-  return {
-    cleaned,
-    location: { primary: m[1], secondary: m[2] === "none" ? null : m[2] },
-  };
-}
-
-// ---- BODY MAP ----
-// Renders the seven-center energy visualization. Positions are anatomical
-// (crown at top of head down to root at base of spine); intensity is a
-// single warm-color glow, stronger glow = more depleted. Deliberately no
-// "chakra" language anywhere in the UI — plain English labels only.
-
-const BODY_ZONES = [
-  { key: "crown", label: "Connection", cy: 18, outerR: 14, coreR: 6 },
-  { key: "thirdEye", label: "Clarity", cy: 40, outerR: 11, coreR: 5 },
-  { key: "throat", label: "Expression", cy: 80, outerR: 12, coreR: 5 },
-  { key: "heart", label: "Heart", cy: 140, outerR: 22, coreR: 9 },
-  { key: "solarPlexus", label: "Personal Power", cy: 188, outerR: 19, coreR: 8 },
-  { key: "sacral", label: "Creativity & Connection", cy: 232, outerR: 19, coreR: 8 },
-  { key: "root", label: "Foundation", cy: 278, outerR: 22, coreR: 9 },
-];
-
-function opacityForRole(role) {
-  if (role === "primary") return 0.85;
-  if (role === "secondary") return 0.5;
-  return 0;
-}
-
-function BodyMap({ location, forExport }) {
-  const roleFor = (key) => {
-    if (location.primary === key) return "primary";
-    if (location.secondary === key) return "secondary";
-    return null;
-  };
-  const activeZones = BODY_ZONES.filter(z => roleFor(z.key));
-
-  return (
-    <svg width="240" height="480" viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg" style={{ display: "block", margin: "0 auto" }}>
-      <defs>
-        <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="14" />
-        </filter>
-      </defs>
-      {forExport && <rect x="0" y="0" width="240" height="480" fill="#faf8f4" />}
-      <g filter="url(#softGlow)">
-        {activeZones.map(z => (
-          <circle key={z.key} cx="120" cy={z.cy} r={z.outerR} fill="#c17f3a" opacity={opacityForRole(roleFor(z.key))} />
-        ))}
-      </g>
-      <g>
-        {activeZones.map(z => (
-          <circle key={z.key} cx="120" cy={z.cy} r={z.coreR} fill="#c17f3a" opacity={Math.min(1, opacityForRole(roleFor(z.key)) + 0.15)} />
-        ))}
-      </g>
-      <g fill="none" stroke="#1e1a16" strokeWidth="2" opacity="0.55">
-        <circle cx="120" cy="45" r="28" />
-        <path d="M108,70 L108,85 M132,70 L132,85" />
-        <path d="M85,95 Q78,100 78,190 L82,260 Q85,290 95,300 L145,300 Q155,290 158,260 L162,190 Q162,100 155,95 Q120,80 85,95 Z" />
-        <path d="M82,100 Q55,130 48,190 Q45,220 50,250 M158,100 Q185,130 192,190 Q195,220 190,250" />
-        <path d="M95,300 Q90,360 85,420 Q83,445 88,470 M145,300 Q150,360 155,420 Q157,445 152,470" />
-      </g>
-    </svg>
-  );
-}
-
-function BodyMapWithDownload({ location }) {
-  const svgRef = useRef(null);
-  const primaryZone = BODY_ZONES.find(z => z.key === location.primary);
-  const secondaryZone = location.secondary ? BODY_ZONES.find(z => z.key === location.secondary) : null;
-
-  const download = () => {
-    const svgEl = svgRef.current.querySelector("svg");
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svgEl);
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const scale = 3;
-      canvas.width = 240 * scale;
-      canvas.height = 480 * scale;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#faf8f4";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, 240, 480);
-      URL.revokeObjectURL(url);
-      canvas.toBlob(blob => {
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "energy-map.png";
-        link.click();
-      });
-    };
-    img.src = url;
-  };
-
-  return (
-    <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
-      <div ref={svgRef}>
-        <BodyMap location={location} forExport={true} />
-      </div>
-      <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS, marginTop: "0.75rem", letterSpacing: "0.03em" }}>
-        {secondaryZone
-          ? `Your energy is most concentrated in ${primaryZone.label.toLowerCase()}, with a secondary pull toward ${secondaryZone.label.toLowerCase()}.`
-          : `Your energy is most concentrated in ${primaryZone.label.toLowerCase()}.`}
-      </div>
-      <button
-        onClick={download}
-        style={{ marginTop: "0.85rem", background: "transparent", border: `1.5px solid ${c.borderMid}`, borderRadius: "6px", padding: "8px 18px", fontSize: "13px", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.03em", color: c.textPrimary, cursor: "pointer" }}
-      >
-        Download image
-      </button>
-    </div>
-  );
-}
 
 function EnergeticDirectionAction() {
   return (
@@ -430,15 +309,97 @@ function GeneratingScreen({ stage }) {
   );
 }
 
+// Parses the model's lightweight "# " / "## " heading markup into a
+// structured list of blocks, shared by both the on-screen display and the
+// Word export, so the two never drift apart from each other.
+function parseReportStructure(text) {
+  const lines = text.split("\n");
+  const blocks = [];
+  let currentParagraph = [];
+
+  const flushParagraph = () => {
+    if (currentParagraph.length) {
+      const combined = currentParagraph.join(" ").trim();
+      if (combined) blocks.push({ type: "p", text: combined });
+      currentParagraph = [];
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("### ")) {
+      flushParagraph();
+      blocks.push({ type: "h3", text: trimmed.slice(4).trim() });
+    } else if (trimmed.startsWith("## ")) {
+      flushParagraph();
+      blocks.push({ type: "h2", text: trimmed.slice(3).trim() });
+    } else if (trimmed.startsWith("# ")) {
+      flushParagraph();
+      blocks.push({ type: "h1", text: trimmed.slice(2).trim() });
+    } else if (trimmed === "") {
+      flushParagraph();
+    } else {
+      currentParagraph.push(trimmed);
+    }
+  }
+  flushParagraph();
+  return blocks;
+}
+
+function ReportContent({ text }) {
+  const blocks = parseReportStructure(text);
+  return (
+    <>
+      {blocks.map((b, i) => {
+        if (b.type === "h1") {
+          return (
+            <div key={i} style={{ fontSize: "23px", fontWeight: 700, fontFamily: SANS, color: c.textPrimary, letterSpacing: "-0.01em", marginTop: i === 0 ? 0 : "2.5rem", marginBottom: "1.1rem", paddingBottom: "0.6rem", borderBottom: `1px solid ${c.borderMid}` }}>
+              {b.text}
+            </div>
+          );
+        }
+        if (b.type === "h2") {
+          return (
+            <div key={i} style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
+              {b.text}
+            </div>
+          );
+        }
+        if (b.type === "h3") {
+          const isDrain = b.text.toLowerCase().includes("drain");
+          return (
+            <div key={i} style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: SANS, color: isDrain ? c.accentPop : c.accent, marginTop: "1.1rem", marginBottom: "0.4rem" }}>
+              {b.text}
+            </div>
+          );
+        }
+        return (
+          <p key={i} style={{ margin: "0 0 1.15rem", lineHeight: 1.85, fontFamily: SERIF, fontSize: "17px" }}>
+            {b.text}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 async function downloadReadingAsDocx(readingText) {
-  const paragraphs = readingText
-    .split("\n\n")
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => new Paragraph({
-      children: [new TextRun({ text: p, font: "Georgia", size: 24 })],
+  const blocks = parseReportStructure(readingText);
+  const bodyChildren = blocks.map(b => {
+    if (b.type === "h1") {
+      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 200 } });
+    }
+    if (b.type === "h2") {
+      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_2, spacing: { before: 280, after: 160 } });
+    }
+    if (b.type === "h3") {
+      return new Paragraph({ text: b.text, heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 120 } });
+    }
+    return new Paragraph({
+      children: [new TextRun({ text: b.text, font: "Georgia", size: 24 })],
       spacing: { after: 240 },
-    }));
+    });
+  });
 
   const doc = new Document({
     sections: [{
@@ -453,7 +414,7 @@ async function downloadReadingAsDocx(readingText) {
           children: [new TextRun({ text: "Voltage Wellness", italics: true, size: 20, color: "5C5147" })],
           spacing: { after: 480 },
         }),
-        ...paragraphs,
+        ...bodyChildren,
       ],
     }],
   });
@@ -482,8 +443,8 @@ function ReadingScreen({ reading, error, onRetry }) {
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
               <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, fontFamily: SANS }}>
                 Your Energy Audit Reading
               </div>
@@ -494,8 +455,7 @@ function ReadingScreen({ reading, error, onRetry }) {
                 Download as Word document
               </button>
             </div>
-            {reading.chakraLocation && <BodyMapWithDownload location={reading.chakraLocation} />}
-            {reading.text}
+            <ReportContent text={reading.text} />
             <EnergeticDirectionAction />
           </div>
         )}
@@ -644,7 +604,7 @@ export default function EnergyAuditInterpreter() {
   const [step, setStep] = useState("intake"); // intake | generating | reading
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [reading, setReading] = useState(null); // { text, chakraLocation }
+  const [reading, setReading] = useState(null); // { text }
   const [readingError, setReadingError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -693,10 +653,9 @@ export default function EnergyAuditInterpreter() {
         stage = 3;
       }
       setGeneratingStage(3);
-      const part3raw = await callAPI(history, 2000);
-      const { cleaned: part3, location } = parseChakraLocation(part3raw);
+      const part3 = await callAPI(history, 2000);
       const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
-      setReading({ text: fullText, chakraLocation: location });
+      setReading({ text: fullText });
       setStep("reading");
     } catch {
       setRetryState({ history, stage, parts });
