@@ -41,7 +41,7 @@ function Header() {
     <div style={{ borderBottom: `1px solid ${c.border}`, padding: "0.6rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", background: c.bgHeader, position: "sticky", top: 0, zIndex: 10 }}>
       <div>
         <div style={{ fontSize: "9px", letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1px", fontFamily: SANS, fontWeight: 600 }}>Voltage Wellness</div>
-        <div style={{ fontSize: "14px", fontWeight: 700, color: c.textPrimary, fontFamily: SANS }}>Energy Audit</div>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: c.textPrimary, fontFamily: SANS }}>Energetic Direction — Client Intake</div>
       </div>
     </div>
   );
@@ -406,7 +406,7 @@ async function downloadReadingAsDocx(readingText) {
       properties: {},
       children: [
         new Paragraph({
-          text: "Your Energy Audit Reading",
+          text: "Energetic Direction — Client Analysis",
           heading: HeadingLevel.TITLE,
           spacing: { after: 120 },
         }),
@@ -422,7 +422,7 @@ async function downloadReadingAsDocx(readingText) {
   const blob = await Packer.toBlob(doc);
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "energy-audit-reading.docx";
+  link.download = "client-intake-analysis.docx";
   link.click();
 }
 
@@ -446,7 +446,7 @@ function ReadingScreen({ reading, error, onRetry }) {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
               <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, fontFamily: SANS }}>
-                Your Energy Audit Reading
+                Client Analysis
               </div>
               <button
                 onClick={() => downloadReadingAsDocx(reading.text)}
@@ -495,112 +495,9 @@ function compileFullInventory(answers) {
 
 // ---- PAYWALL ----
 
-function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
-  return (
-    <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "2.5rem 1.5rem", overflowY: "auto" }}>
-      <div style={{ width: "100%", maxWidth: "560px", textAlign: "center" }}>
-        <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
-          The Energy Audit
-        </div>
-        <div style={{ fontSize: "26px", fontWeight: 700, color: c.textPrimary, marginBottom: "1rem", lineHeight: 1.3, fontFamily: SANS, letterSpacing: "-0.01em" }}>
-          A complete map of where your energy is going.
-        </div>
-        <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75, marginBottom: "1.75rem" }}>
-          Nine domains of your actual life, examined in genuine depth, with a full written Reading that traces the real anchor beneath the pattern and goes as deep as the material allows — not a quick quiz, a real one-time investment in seeing the whole picture clearly.
-        </div>
-        {cancelled && (
-          <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
-            Checkout was cancelled — no charge was made. Ready whenever you are.
-          </div>
-        )}
-        {checkoutError && (
-          <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
-            Something went wrong starting checkout. Please try again.
-          </div>
-        )}
-        <button
-          onClick={onCheckout}
-          disabled={checkingOut}
-          style={{ background: checkingOut ? c.accentMid : c.accent, border: "none", borderRadius: "6px", padding: "14px 32px", fontSize: "15px", color: "#fff", cursor: checkingOut ? "default" : "pointer", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.03em" }}
-        >
-          {checkingOut ? "Redirecting…" : "Start the Energy Audit — $44"}
-        </button>
-        <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS, marginTop: "0.6rem" }}>
-          One-time. Full nine-domain Life Inventory and a complete, comprehensive Reading.
-        </div>
-        <Disclaimer />
-      </div>
-    </div>
-  );
-}
-
 // ---- MAIN APP ----
 
 export default function EnergyAuditInterpreter() {
-  const [unlocked, setUnlocked] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState(false);
-  const [cancelled, setCancelled] = useState(false);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get("session_id");
-    const wasCancelled = url.searchParams.get("checkout") === "cancelled";
-
-    if (wasCancelled) {
-      setCancelled(true);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-
-    const stored = localStorage.getItem("energyAudit_unlocked");
-    if (stored === "true") {
-      setUnlocked(true);
-      setCheckingAccess(false);
-      return;
-    }
-
-    if (sessionId) {
-      fetch("/api/verify-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.paid) {
-            localStorage.setItem("energyAudit_unlocked", "true");
-            setUnlocked(true);
-          }
-          window.history.replaceState({}, "", window.location.pathname);
-          setCheckingAccess(false);
-        })
-        .catch(() => {
-          window.history.replaceState({}, "", window.location.pathname);
-          setCheckingAccess(false);
-        });
-    } else {
-      setCheckingAccess(false);
-    }
-  }, []);
-
-  const startCheckout = async () => {
-    setCheckingOut(true);
-    setCheckoutError(false);
-    try {
-      const res = await fetch("/api/create-checkout-session", { method: "POST" });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("No checkout URL returned");
-      }
-    } catch {
-      setCheckoutError(true);
-      setCheckingOut(false);
-    }
-  };
-
   const [step, setStep] = useState("intake"); // intake | generating | reading
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -666,42 +563,6 @@ export default function EnergyAuditInterpreter() {
   };
 
   const retryReading = () => generateReading(retryState);
-
-  if (checkingAccess) {
-    return (
-      <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
-        <Header />
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", color: c.textMuted, fontFamily: SANS }}>
-          Checking access…
-        </div>
-      </div>
-    );
-  }
-
-  if (!unlocked) {
-    return (
-      <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
-        <Header />
-        <PaywallScreen onCheckout={startCheckout} checkingOut={checkingOut} checkoutError={checkoutError} cancelled={cancelled} />
-        <style>{`
-          * { box-sizing: border-box; }
-          body { margin: 0; }
-          textarea::placeholder { color: rgba(30,26,22,0.3); }
-          .thinking-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #2d5a3d;
-            animation: thinkingBounce 1s ease-in-out infinite;
-          }
-          @keyframes thinkingBounce {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-            30% { transform: translateY(-5px); opacity: 1; }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
