@@ -291,7 +291,148 @@ function parseQuestionTag(text) {
   return { hasQuestion: !!m, questionText: m ? m[1].trim() : null };
 }
 
-// ---- CONVERSATION SCREEN (Part 2 — the Anchor Analysis) ----
+function parseChakraLocation(text) {
+  const m = text.match(/\[\[CHAKRA_LOCATION\s+primary=(\w+)\s+secondary=(\w+)\]\]/);
+  const cleaned = text.replace(/\[\[CHAKRA_LOCATION[^\]]*\]\]/, "").trim();
+  if (!m) return { cleaned, location: null };
+  return {
+    cleaned,
+    location: { primary: m[1], secondary: m[2] === "none" ? null : m[2] },
+  };
+}
+
+// ---- BODY MAP ----
+// Renders the seven-center energy visualization. Positions are anatomical
+// (crown at top of head down to root at base of spine); intensity is a
+// single warm-color glow, stronger glow = more depleted. Deliberately no
+// "chakra" language anywhere in the UI — plain English labels only.
+
+const BODY_ZONES = [
+  { key: "crown", label: "Connection", cy: 18, outerR: 14, coreR: 6 },
+  { key: "thirdEye", label: "Clarity", cy: 40, outerR: 11, coreR: 5 },
+  { key: "throat", label: "Expression", cy: 80, outerR: 12, coreR: 5 },
+  { key: "heart", label: "Heart", cy: 140, outerR: 22, coreR: 9 },
+  { key: "solarPlexus", label: "Personal Power", cy: 188, outerR: 19, coreR: 8 },
+  { key: "sacral", label: "Creativity & Connection", cy: 232, outerR: 19, coreR: 8 },
+  { key: "root", label: "Foundation", cy: 278, outerR: 22, coreR: 9 },
+];
+
+function opacityForRole(role) {
+  if (role === "primary") return 0.85;
+  if (role === "secondary") return 0.5;
+  return 0;
+}
+
+function BodyMap({ location, forExport }) {
+  const roleFor = (key) => {
+    if (location.primary === key) return "primary";
+    if (location.secondary === key) return "secondary";
+    return null;
+  };
+  const activeZones = BODY_ZONES.filter(z => roleFor(z.key));
+
+  return (
+    <svg width="240" height="480" viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg" style={{ display: "block", margin: "0 auto" }}>
+      <defs>
+        <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="14" />
+        </filter>
+      </defs>
+      {forExport && <rect x="0" y="0" width="240" height="480" fill="#faf8f4" />}
+      <g filter="url(#softGlow)">
+        {activeZones.map(z => (
+          <circle key={z.key} cx="120" cy={z.cy} r={z.outerR} fill="#c17f3a" opacity={opacityForRole(roleFor(z.key))} />
+        ))}
+      </g>
+      <g>
+        {activeZones.map(z => (
+          <circle key={z.key} cx="120" cy={z.cy} r={z.coreR} fill="#c17f3a" opacity={Math.min(1, opacityForRole(roleFor(z.key)) + 0.15)} />
+        ))}
+      </g>
+      <g fill="none" stroke="#1e1a16" strokeWidth="2" opacity="0.55">
+        <circle cx="120" cy="45" r="28" />
+        <path d="M108,70 L108,85 M132,70 L132,85" />
+        <path d="M85,95 Q78,100 78,190 L82,260 Q85,290 95,300 L145,300 Q155,290 158,260 L162,190 Q162,100 155,95 Q120,80 85,95 Z" />
+        <path d="M82,100 Q55,130 48,190 Q45,220 50,250 M158,100 Q185,130 192,190 Q195,220 190,250" />
+        <path d="M95,300 Q90,360 85,420 Q83,445 88,470 M145,300 Q150,360 155,420 Q157,445 152,470" />
+      </g>
+    </svg>
+  );
+}
+
+function BodyMapWithDownload({ location }) {
+  const svgRef = useRef(null);
+  const primaryZone = BODY_ZONES.find(z => z.key === location.primary);
+  const secondaryZone = location.secondary ? BODY_ZONES.find(z => z.key === location.secondary) : null;
+
+  const download = () => {
+    const svgEl = svgRef.current.querySelector("svg");
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgEl);
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = 3;
+      canvas.width = 240 * scale;
+      canvas.height = 480 * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#faf8f4";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, 240, 480);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "energy-map.png";
+        link.click();
+      });
+    };
+    img.src = url;
+  };
+
+  return (
+    <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
+      <div ref={svgRef}>
+        <BodyMap location={location} forExport={true} />
+      </div>
+      <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS, marginTop: "0.75rem", letterSpacing: "0.03em" }}>
+        {secondaryZone
+          ? `Your energy is most concentrated in ${primaryZone.label.toLowerCase()}, with a secondary pull toward ${secondaryZone.label.toLowerCase()}.`
+          : `Your energy is most concentrated in ${primaryZone.label.toLowerCase()}.`}
+      </div>
+      <button
+        onClick={download}
+        style={{ marginTop: "0.85rem", background: "transparent", border: `1.5px solid ${c.borderMid}`, borderRadius: "6px", padding: "8px 18px", fontSize: "13px", fontFamily: SANS, fontWeight: 700, letterSpacing: "0.03em", color: c.textPrimary, cursor: "pointer" }}
+      >
+        Download image
+      </button>
+    </div>
+  );
+}
+
+function EnergeticDirectionAction() {
+  return (
+    <div style={{ marginTop: "2rem", background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "12px", padding: "1.4rem 1.5rem", textAlign: "center", fontFamily: SANS }}>
+      <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: c.accent, marginBottom: "0.6rem" }}>
+        Energetic Direction
+      </div>
+      <div style={{ fontSize: "15px", color: c.textPrimary, lineHeight: 1.6, marginBottom: "1rem", fontFamily: SERIF }}>
+        This reading is a map. Energetic Direction is where you actually live it — sustained one-on-one work, real accountability, and guided practice a reading alone can't provide.
+      </div>
+      <a
+        href="https://voltagewellness.com/work-with-me.html#direction"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: "inline-block", background: c.accent, border: "none", borderRadius: "6px", padding: "10px 22px", fontSize: "13px", fontWeight: 700, letterSpacing: "0.03em", color: "#fff", textDecoration: "none" }}
+      >
+        Learn about Energetic Direction &rarr;
+      </a>
+    </div>
+  );
+}
 
 function ConversationScreen({ messages, loading, progress, onSend }) {
   const [draft, setDraft] = useState("");
@@ -332,7 +473,9 @@ function ConversationScreen({ messages, loading, progress, onSend }) {
                   <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
                     Your Energetic Anchor Reading
                   </div>
+                  {m.chakraLocation && <BodyMapWithDownload location={m.chakraLocation} />}
                   {m.content}
+                  <EnergeticDirectionAction />
                 </div>
               ) : (
                 <div style={{ fontSize: "17px", fontFamily: SERIF, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
@@ -506,9 +649,10 @@ export default function EnergyAuditInterpreter() {
     };
     const withRequest = [...messagesForApi, readingRequest];
     try {
-      const raw = await callAPI(withRequest, 4000);
-      const { cleaned } = parseAuditStatus(raw);
-      setMessages([...withRequest.filter(m => !m.hidden), { role: "assistant", content: cleaned, isReading: true }]);
+      const raw = await callAPI(withRequest, 16000);
+      const { cleaned: withoutStatus } = parseAuditStatus(raw);
+      const { cleaned: readingText, location } = parseChakraLocation(withoutStatus);
+      setMessages([...withRequest.filter(m => !m.hidden), { role: "assistant", content: readingText, isReading: true, chakraLocation: location }]);
       setProgress(100);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "There was a connection error generating your Reading. Please try again.", displayReflection: "There was a connection error generating your Reading. Please try again." }]);
@@ -531,7 +675,7 @@ export default function EnergyAuditInterpreter() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", overflow: "hidden", background: c.bg, color: c.textPrimary, fontFamily: SERIF, display: "flex", flexDirection: "column" }}>
       <Header />
       {step === "conversation" ? (
         <ConversationScreen messages={messages} loading={loading} progress={progress} onSend={sendAnswer} />
