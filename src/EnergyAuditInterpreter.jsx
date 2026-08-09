@@ -37,10 +37,10 @@ function useScrollToTopOnMount() {
 
 function Header() {
   return (
-    <div style={{ borderBottom: `1px solid ${c.border}`, padding: "1.25rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", background: c.bgHeader, position: "sticky", top: 0, zIndex: 10 }}>
+    <div style={{ borderBottom: `1px solid ${c.border}`, padding: "0.6rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", background: c.bgHeader, position: "sticky", top: 0, zIndex: 10 }}>
       <div>
-        <div style={{ fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "2px", fontFamily: SANS, fontWeight: 600 }}>Voltage Wellness</div>
-        <div style={{ fontSize: "17px", fontWeight: 700, color: c.textPrimary, fontFamily: SANS }}>Energy Audit</div>
+        <div style={{ fontSize: "9px", letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1px", fontFamily: SANS, fontWeight: 600 }}>Voltage Wellness</div>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: c.textPrimary, fontFamily: SANS }}>Energy Audit</div>
       </div>
     </div>
   );
@@ -163,7 +163,7 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "1.5rem 1.5rem 2rem", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: "760px" }}>
         <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
@@ -177,7 +177,7 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
           </div>
         </div>
 
-        <div style={{ maxHeight: "54vh", overflowY: "auto", paddingRight: "4px" }}>
+        <div style={{ paddingRight: "4px" }}>
           {domain.groups && domain.groups.map(g => (
             <OptionGroup
               key={g.key}
@@ -569,7 +569,7 @@ function compileFullInventory(answers) {
 
 function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
   return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.5rem" }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "2.5rem 1.5rem", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: "560px", textAlign: "center" }}>
         <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
           The Energy Audit
@@ -579,12 +579,6 @@ function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
         </div>
         <div style={{ fontSize: "16px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.75, marginBottom: "1.75rem" }}>
           Nine domains of your actual life, a guided conversation that finds the real anchor beneath the pattern, and a full written Reading built to go as deep as the material allows — not a quick quiz, a real one-time investment in seeing the whole picture clearly.
-        </div>
-        <div style={{ fontSize: "32px", fontWeight: 700, color: c.textPrimary, marginBottom: "0.35rem", fontFamily: SANS }}>
-          $44
-        </div>
-        <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, marginBottom: "1.75rem" }}>
-          One-time. Full nine-domain Life Inventory, guided conversation, and complete Reading.
         </div>
         {cancelled && (
           <div style={{ fontSize: "13px", color: c.accentPop, fontFamily: SANS, marginBottom: "1rem" }}>
@@ -603,6 +597,9 @@ function PaywallScreen({ onCheckout, checkingOut, checkoutError, cancelled }) {
         >
           {checkingOut ? "Redirecting…" : "Start the Energy Audit — $44"}
         </button>
+        <div style={{ fontSize: "12px", color: c.textMuted, fontFamily: SANS, marginTop: "0.6rem" }}>
+          One-time. Full nine-domain Life Inventory, guided conversation, and complete Reading.
+        </div>
         <Disclaimer />
       </div>
     </div>
