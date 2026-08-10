@@ -296,9 +296,9 @@ function NameScreen({ name, setName, onContinue }) {
 
 function GeneratingScreen({ stage }) {
   const messages = {
-    1: "Finding the anchor underneath the pattern.",
-    2: "Working through all ten domains, one at a time.",
-    3: "Bringing it together and closing the Reading.",
+    1: "Finding the pattern underneath it all.",
+    2: "Working through all eleven domains, one at a time.",
+    3: "Writing your summary.",
   };
 
   return (
@@ -336,14 +336,29 @@ function ErrorScreen({ onRetry }) {
   );
 }
 
-// The model writes one continuous document, but only Parts One, Two, and
-// the "Where to Start" half of Part Three are meant for the client to see —
-// "Notes for Session One" is Zach's private coaching prep. Split there.
+// The model writes one continuous document, but the client only ever sees
+// the short Client Synopsis, wrapped in explicit boundary markers so it can
+// have its own dynamic, person-specific headings without those headings
+// needing to match any fixed text we search for.
 function splitClientAndFullText(fullText) {
-  const marker = "# Notes for Session One";
-  const idx = fullText.indexOf(marker);
-  if (idx === -1) return { clientText: fullText, fullText };
-  return { clientText: fullText.slice(0, idx).trim(), fullText };
+  const startMarker = "[[CLIENT_SYNOPSIS_START]]";
+  const endMarker = "[[CLIENT_SYNOPSIS_END]]";
+  const startIdx = fullText.indexOf(startMarker);
+  const endIdx = fullText.indexOf(endMarker);
+
+  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+    // Markers missing or malformed — fail safe by showing the client
+    // nothing rather than accidentally showing them the practitioner notes.
+    return { clientText: "", fullText };
+  }
+
+  const clientText = fullText.slice(startIdx + startMarker.length, endIdx).trim();
+  // Give Zach's copy readable section breaks instead of raw markers.
+  const readableFullText = fullText
+    .replace(startMarker, "--- Client Synopsis (what the client saw) ---\n")
+    .replace(endMarker, "\n--- End Client Synopsis ---");
+
+  return { clientText, fullText: readableFullText };
 }
 
 function parseReportStructure(text) {
@@ -424,7 +439,13 @@ function ReadingScreen({ clientText }) {
         <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "0.5rem", fontFamily: SANS }}>
           Your Analysis
         </div>
-        <ReportContent text={clientText} />
+        {clientText ? (
+          <ReportContent text={clientText} />
+        ) : (
+          <p style={{ fontSize: "16px", fontFamily: SERIF, lineHeight: 1.75, color: c.textSecondary }}>
+            Your intake is complete and has been sent to Zach — thank you. There was an issue formatting your on-screen summary, but nothing was lost; Zach has everything he needs for your session.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -513,7 +534,7 @@ export default function EnergyAuditInterpreter() {
       ({ history, stage, parts } = resume);
     } else {
       const compiled = compileFullInventory(answers);
-      history = [{ role: "user", content: `Here is the client's full Life Inventory (client name: ${clientName}):\n\n${compiled}\n\nWrite Part One (The Overview and the Core Pattern) now.` }];
+      history = [{ role: "user", content: `Here is the client's full Life Inventory (client name: ${clientName}):\n\n${compiled}\n\nWrite Part One (The Core Pattern) now.` }];
       stage = 1;
       parts = {};
     }
@@ -530,11 +551,11 @@ export default function EnergyAuditInterpreter() {
         setGeneratingStage(2);
         const part2 = await callAPI(history, 6000);
         parts.partTwo = part2;
-        history = [...history, { role: "assistant", content: part2 }, { role: "user", content: "Now write Part Three (Where to Start, and Notes for Session One)." }];
+        history = [...history, { role: "assistant", content: part2 }, { role: "user", content: "Now write Part Three (the Client Synopsis, wrapped in its markers, and Notes for Session One)." }];
         stage = 3;
       }
       setGeneratingStage(3);
-      const part3 = await callAPI(history, 2000);
+      const part3 = await callAPI(history, 3000);
       const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
       const { clientText } = splitClientAndFullText(fullText);
       setReading({ clientText, fullText });
