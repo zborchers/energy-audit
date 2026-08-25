@@ -170,9 +170,14 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
           <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: c.accent, marginBottom: "1rem", fontFamily: SANS }}>
             Life Inventory · {index + 1} of {total}
           </div>
-          <div style={{ fontSize: "24px", fontWeight: 700, color: c.textPrimary, marginBottom: "0.5rem", lineHeight: 1.3, fontFamily: SANS, letterSpacing: "-0.01em" }}>
+          <div style={{ fontSize: "24px", fontWeight: 700, color: c.textPrimary, marginBottom: domain.ageRange ? "0.3rem" : "0.5rem", lineHeight: 1.3, fontFamily: SANS, letterSpacing: "-0.01em" }}>
             {domain.uiTitle}
           </div>
+          {domain.ageRange && (
+            <div style={{ fontSize: "13px", color: c.accent, fontFamily: SANS, fontWeight: 600, marginBottom: "0.5rem" }}>
+              {domain.ageRange}
+            </div>
+          )}
           <div style={{ fontSize: "13px", color: c.textMuted, fontFamily: SANS, fontStyle: "italic" }}>
             Answer whatever applies — every open question here is optional.
           </div>
@@ -487,8 +492,13 @@ function ReportContent({ text, withQA, answers, domainByUiTitle }) {
           const domain = withQA && domainByUiTitle ? domainByUiTitle[b.text] : null;
           return (
             <div key={i}>
-              <div style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
-                {b.text}
+              <div style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem", display: "flex", alignItems: "baseline", gap: "8px" }}>
+                <span>{b.text}</span>
+                {domain && domain.ageRange && (
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: c.textMuted, fontFamily: SANS }}>
+                    {domain.ageRange}
+                  </span>
+                )}
               </div>
               {domain && <QAList domain={domain} answers={answers} />}
             </div>
