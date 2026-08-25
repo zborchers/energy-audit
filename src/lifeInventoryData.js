@@ -7,6 +7,14 @@
 //
 // `chakraWeight` is internal-only — never shown in the UI, used by Part 2
 // (the Anchor Analysis) to know which chakra territory each domain maps to.
+//
+// `detailFirst`, `detailRows`, and `detailPlaceholder` are new, optional
+// per-domain fields — not in the original spec. They let a domain's detail
+// box render before its button groups instead of after, with more visible
+// room to write and a placeholder that invites a real answer instead of an
+// afterthought. Only set on the two Growing Up domains for now. Placeholder
+// copy here is a draft, not final — swap in your own wording before this
+// ships, same as anywhere else.
 
 export const LIFE_INVENTORY_DOMAINS = [
   {
@@ -376,7 +384,12 @@ export const LIFE_INVENTORY_DOMAINS = [
       },
     ],
     // Deliberately open-ended and unscored — often the richest answer in
-    // the whole audit.
+    // the whole audit. Now rendered FIRST on screen (see detailFirst),
+    // with more room to write (detailRows) and a placeholder that invites
+    // a real answer instead of reading as an afterthought.
+    detailFirst: true,
+    detailRows: 6,
+    detailPlaceholder: "Take your time with this one — a few sentences or a full paragraph, whatever comes. There's no wrong way to answer it.",
     detailLabel: "Before you had words for it — what did you learn about whether the world was safe, whether you belonged, or whether your needs would actually be met? (optional)",
   },
 
@@ -420,6 +433,11 @@ export const LIFE_INVENTORY_DOMAINS = [
         noFollowup: true,
       },
     ],
+    // Same treatment as the domain above — open field first, more room,
+    // a placeholder that invites real reflection.
+    detailFirst: true,
+    detailRows: 6,
+    detailPlaceholder: "A specific memory, a phrase someone used to say, a pattern you can feel but haven't named — whatever's actually there.",
     detailLabel: "What's a pattern you can trace back to this age — people-pleasing, rebellion, staying invisible, performing for approval, anything else? (optional)",
   },
 ];
