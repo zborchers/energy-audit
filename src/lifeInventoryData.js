@@ -436,11 +436,15 @@ export const LIFE_INVENTORY_DOMAINS = [
       },
     ],
     // Same treatment as the domain above — open field first, more room,
-    // a placeholder that invites real reflection.
+    // a placeholder that invites real reflection. Deliberately weighted
+    // toward how the client saw themselves and what they came to believe
+    // during this window, not just the events — the subjective view is
+    // the material the developmental trace actually needs, and the three
+    // button groups above already cover the factual categories.
     detailFirst: true,
-    detailRows: 6,
-    detailPlaceholder: "A specific memory, a phrase someone used to say, a pattern you can feel but haven't named — whatever's actually there.",
-    detailLabel: "What's a pattern you can trace back to this age — people-pleasing, rebellion, staying invisible, performing for approval, anything else? (optional)",
+    detailRows: 8,
+    detailPlaceholder: "Whatever comes to mind — you don't need to answer every part of this in order.",
+    detailLabel: "Describe your life during these years, in your own words — not just what happened, but how you saw yourself and what you came to believe about your place among your friends. Was there a specific relationship, moment, or experience that shaped how you saw yourself? Did your relationship with your parents shift at all during this time? Is there anything else from this period that still feels significant? (optional)",
   },
 ];
 
