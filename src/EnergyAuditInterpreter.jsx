@@ -116,18 +116,18 @@ function OptionGroup({ group, stateKey, selections, toggle, loading, followupVal
   );
 }
 
-function DetailBox({ label, value, onChange }) {
+function DetailBox({ label, value, onChange, rows, placeholder, emphasized }) {
   return (
-    <div style={{ marginBottom: "1rem" }}>
-      <div style={{ fontSize: "13px", color: c.textSecondary, fontFamily: SANS, fontWeight: 600, marginBottom: "0.5rem" }}>
+    <div style={{ marginBottom: emphasized ? "1.75rem" : "1rem" }}>
+      <div style={{ fontSize: emphasized ? "14px" : "13px", color: emphasized ? c.textPrimary : c.textSecondary, fontFamily: SANS, fontWeight: 700, marginBottom: "0.5rem" }}>
         {label}
       </div>
-      <div style={{ background: c.bgInput, border: `1px solid ${c.borderMid}`, borderRadius: "12px", padding: "12px 16px" }}>
+      <div style={{ background: c.bgInput, border: `1px solid ${emphasized ? c.accent : c.borderMid}`, borderRadius: "12px", padding: "12px 16px" }}>
         <textarea
           value={value || ""}
           onChange={e => onChange(e.target.value)}
-          placeholder="Type here..."
-          rows={2}
+          placeholder={placeholder || "Type here..."}
+          rows={rows || 2}
           style={{ background: "transparent", border: "none", outline: "none", color: c.textPrimary, fontSize: "16px", fontFamily: SERIF, lineHeight: 1.6, resize: "none", width: "100%" }}
         />
       </div>
@@ -179,6 +179,16 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
         </div>
 
         <div style={{ paddingRight: "4px" }}>
+          {domain.groups && domain.detailLabel && domain.detailFirst && (
+            <DetailBox
+              label={domain.detailLabel}
+              value={selections["_detail"]}
+              onChange={v => setTextField("_detail", v)}
+              rows={domain.detailRows}
+              placeholder={domain.detailPlaceholder}
+              emphasized
+            />
+          )}
           {domain.groups && domain.groups.map(g => (
             <OptionGroup
               key={g.key}
@@ -191,7 +201,7 @@ function DomainScreen({ domain, index, total, loading, answers, setAnswers, goBa
               setFollowup={setTextField}
             />
           ))}
-          {domain.groups && domain.detailLabel && (
+          {domain.groups && domain.detailLabel && !domain.detailFirst && (
             <DetailBox
               label={domain.detailLabel}
               value={selections["_detail"]}
@@ -408,6 +418,17 @@ function QAList({ domain, answers }) {
   const selections = answers[domain.id] || {};
   if (!domain.groups || !domain.groups.length) return null;
 
+  const detailBlock = domain.detailLabel && selections["_detail"] && selections["_detail"].trim() ? (
+    <div style={{ marginBottom: "1rem" }}>
+      <div style={{ fontSize: domain.detailFirst ? "14px" : "13px", fontWeight: 700, color: domain.detailFirst ? c.textPrimary : c.textSecondary, fontFamily: SANS, marginBottom: "0.3rem" }}>
+        {domain.detailLabel}
+      </div>
+      <div style={{ fontSize: "15px", fontFamily: SERIF, color: c.textPrimary }}>
+        {selections["_detail"].trim()}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div
       style={{
@@ -418,6 +439,7 @@ function QAList({ domain, answers }) {
         padding: "16px 20px",
       }}
     >
+      {domain.detailFirst && detailBlock}
       {domain.groups.map(g => {
         const val = selections[g.key];
         const hasAnswer = val && val.length > 0;
@@ -439,16 +461,7 @@ function QAList({ domain, answers }) {
           </div>
         );
       })}
-      {domain.detailLabel && selections["_detail"] && selections["_detail"].trim() && (
-        <div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: c.textSecondary, fontFamily: SANS, marginBottom: "0.3rem" }}>
-            {domain.detailLabel}
-          </div>
-          <div style={{ fontSize: "15px", fontFamily: SERIF, color: c.textPrimary }}>
-            {selections["_detail"].trim()}
-          </div>
-        </div>
-      )}
+      {!domain.detailFirst && detailBlock}
     </div>
   );
 }
