@@ -271,7 +271,7 @@ function NameScreen({ name, setName, onContinue }) {
           What's your name?
         </div>
         <div style={{ fontSize: "15px", color: c.textSecondary, fontFamily: SERIF, lineHeight: 1.7, marginBottom: "1.75rem" }}>
-          This is how Zach will know whose intake this is. Everything you share here goes directly to him to prepare for your session — it's not something you'll get back to read yourself.
+          This is how Zach will know whose intake this is. Everything you share here goes to him to prepare for your session, and you'll see your own analysis on screen as soon as it's ready.
         </div>
         <input
           type="text"
@@ -337,9 +337,11 @@ function ErrorScreen({ onRetry }) {
 }
 
 // The model writes one continuous document, but the client only ever sees
-// the short Client Synopsis, wrapped in explicit boundary markers so it can
-// have its own dynamic, person-specific headings without those headings
-// needing to match any fixed text we search for.
+// the Client Synopsis and the Domain by Domain section, wrapped in explicit
+// boundary markers so the synopsis can have its own dynamic, person-specific
+// headings without those headings needing to match any fixed text we search
+// for, and so Domain by Domain can be pulled out and rendered with the raw
+// Q&A interleaved in.
 function splitClientAndFullText(fullText) {
   const startMarker = "[[CLIENT_SYNOPSIS_START]]";
   const endMarker = "[[CLIENT_SYNOPSIS_END]]";
@@ -395,7 +397,68 @@ function parseReportStructure(text) {
   return blocks;
 }
 
-function ReportContent({ text }) {
+// ---- Q&A BLOCK, rendered from the app's own answer state ----
+// Deliberately not model-generated: the model already receives these
+// exact question labels and answers as its input, so having it retype
+// them back out risks small drift (a dropped option, a reworded label).
+// Reading them straight from `answers` and `LIFE_INVENTORY_DOMAINS`
+// guarantees the client and Zach both see exactly what was submitted.
+
+function QAList({ domain, answers }) {
+  const selections = answers[domain.id] || {};
+  if (!domain.groups || !domain.groups.length) return null;
+
+  return (
+    <div
+      style={{
+        marginBottom: "1.5rem",
+        background: c.bgInput,
+        border: `1px solid ${c.borderMid}`,
+        borderRadius: "12px",
+        padding: "16px 20px",
+      }}
+    >
+      {domain.groups.map(g => {
+        const val = selections[g.key];
+        const hasAnswer = val && val.length > 0;
+        const followupVal = g.followupTrigger ? selections[g.followupTrigger.key] : undefined;
+        const hasFollowup = followupVal && followupVal.trim();
+        return (
+          <div key={g.key} style={{ marginBottom: "1rem" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: c.textSecondary, fontFamily: SANS, marginBottom: "0.3rem" }}>
+              {g.label}
+            </div>
+            <div style={{ fontSize: "15px", fontFamily: SERIF, color: hasAnswer ? c.textPrimary : c.textMuted, fontStyle: hasAnswer ? "normal" : "italic" }}>
+              {hasAnswer ? val.join(", ") : "Skipped"}
+            </div>
+            {hasFollowup && (
+              <div style={{ marginTop: "0.35rem", fontSize: "14px", fontFamily: SERIF, color: c.textSecondary, fontStyle: "italic" }}>
+                {g.followupTrigger.label}: {followupVal.trim()}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {domain.detailLabel && selections["_detail"] && selections["_detail"].trim() && (
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: c.textSecondary, fontFamily: SANS, marginBottom: "0.3rem" }}>
+            {domain.detailLabel}
+          </div>
+          <div style={{ fontSize: "15px", fontFamily: SERIF, color: c.textPrimary }}>
+            {selections["_detail"].trim()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// withQA + answers are only passed when rendering Domain by Domain — the
+// Client Synopsis calls this without them and behaves exactly as before.
+// domainByUiTitle maps each h2's exact heading text back to its domain
+// object, so a QAList can be inserted right after the heading, before that
+// domain's Drain/Recharge content.
+function ReportContent({ text, withQA, answers, domainByUiTitle }) {
   const blocks = parseReportStructure(text);
   return (
     <>
@@ -408,9 +471,13 @@ function ReportContent({ text }) {
           );
         }
         if (b.type === "h2") {
+          const domain = withQA && domainByUiTitle ? domainByUiTitle[b.text] : null;
           return (
-            <div key={i} style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
-              {b.text}
+            <div key={i}>
+              <div style={{ fontSize: "16px", fontWeight: 700, fontFamily: SANS, color: c.accent, marginTop: "1.75rem", marginBottom: "0.6rem" }}>
+                {b.text}
+              </div>
+              {domain && <QAList domain={domain} answers={answers} />}
             </div>
           );
         }
@@ -432,19 +499,46 @@ function ReportContent({ text }) {
   );
 }
 
-function ReadingScreen({ clientText }) {
+function ReadingScreen({ synopsisText, domainByDomainText, answers, domainByUiTitle }) {
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 1.5rem" }}>
       <div style={{ maxWidth: "780px", margin: "0 auto", padding: "1.5rem 0 2.5rem" }}>
         <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: c.accent, marginBottom: "0.5rem", fontFamily: SANS }}>
           Your Analysis
         </div>
-        {clientText ? (
-          <ReportContent text={clientText} />
+        {synopsisText ? (
+          <ReportContent text={synopsisText} />
         ) : (
           <p style={{ fontSize: "16px", fontFamily: SERIF, lineHeight: 1.75, color: c.textSecondary }}>
             Your intake is complete and has been sent to Zach — thank you. There was an issue formatting your on-screen summary, but nothing was lost; Zach has everything he needs for your session.
           </p>
+        )}
+
+        {domainByDomainText && (
+          <>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: c.accent,
+                marginTop: "3rem",
+                marginBottom: "0.5rem",
+                paddingTop: "2rem",
+                borderTop: `1px solid ${c.borderMid}`,
+                fontFamily: SANS,
+              }}
+            >
+              Your Answers, Domain by Domain
+            </div>
+            <ReportContent
+              text={domainByDomainText}
+              withQA
+              answers={answers}
+              domainByUiTitle={domainByUiTitle}
+            />
+          </>
         )}
       </div>
     </div>
@@ -481,6 +575,12 @@ function compileFullInventory(answers) {
     .join("\n\n\n");
 }
 
+// Built once — maps a domain's exact uiTitle (which is also the exact "## "
+// heading text the system prompt requires the model to use for that domain
+// in Part Two) back to the domain object, so ReportContent can look up
+// "## Your Day" and find the right domain to pull Q&A from.
+const domainByUiTitle = Object.fromEntries(LIFE_INVENTORY_DOMAINS.map(d => [d.uiTitle, d]));
+
 // ---- PAYWALL ----
 
 // ---- MAIN APP ----
@@ -490,7 +590,7 @@ export default function EnergyAuditInterpreter() {
   const [clientName, setClientName] = useState("");
   const [domainIndex, setDomainIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [reading, setReading] = useState(null); // { text }
+  const [reading, setReading] = useState(null); // { synopsisText, domainByDomainText, fullText }
   const [readingError, setReadingError] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -558,7 +658,9 @@ export default function EnergyAuditInterpreter() {
       const part3 = await callAPI(history, 3000);
       const fullText = [parts.partOne, parts.partTwo, part3].join("\n\n");
       const { clientText } = splitClientAndFullText(fullText);
-      setReading({ clientText, fullText });
+      // Part Two (Domain by Domain) is already fully client-facing text —
+      // no splitting needed, it renders as written, with QA interleaved.
+      setReading({ synopsisText: clientText, domainByDomainText: parts.partTwo, fullText });
       setStep("reading");
       sendResults(fullText); // not awaited — client doesn't wait on this
     } catch {
@@ -579,7 +681,12 @@ export default function EnergyAuditInterpreter() {
       ) : step === "generating" ? (
         <GeneratingScreen stage={generatingStage} />
       ) : step === "reading" ? (
-        <ReadingScreen clientText={reading.clientText} />
+        <ReadingScreen
+          synopsisText={reading.synopsisText}
+          domainByDomainText={reading.domainByDomainText}
+          answers={answers}
+          domainByUiTitle={domainByUiTitle}
+        />
       ) : step === "error" ? (
         <ErrorScreen onRetry={retryReading} />
       ) : (
