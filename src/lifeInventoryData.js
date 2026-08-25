@@ -351,6 +351,7 @@ export const LIFE_INVENTORY_DOMAINS = [
   {
     id: "formative_years_early",
     uiTitle: "Growing Up",
+    ageRange: "Ages 0–7",
     chakraWeight: ["root"],
     groups: [
       {
@@ -384,18 +385,19 @@ export const LIFE_INVENTORY_DOMAINS = [
       },
     ],
     // Deliberately open-ended and unscored — often the richest answer in
-    // the whole audit. Now rendered FIRST on screen (see detailFirst),
-    // with more room to write (detailRows) and a placeholder that invites
-    // a real answer instead of reading as an afterthought.
+    // the whole audit. Rendered FIRST on screen (see detailFirst), with
+    // more room to write (detailRows) and a placeholder that invites a
+    // real answer instead of reading as an afterthought.
     detailFirst: true,
-    detailRows: 6,
-    detailPlaceholder: "Take your time with this one — a few sentences or a full paragraph, whatever comes. There's no wrong way to answer it.",
-    detailLabel: "Before you had words for it — what did you learn about whether the world was safe, whether you belonged, or whether your needs would actually be met? (optional)",
+    detailRows: 8,
+    detailPlaceholder: "Whatever comes to mind — you don't need to answer every part of this in order.",
+    detailLabel: "Describe your childhood during these years. What was the relationship dynamic between your parents like? Did you experience any significant injuries or illnesses? How were your early friendships? Was there anything else going on in the household during this time — a move, a loss, a big change — that mattered? (optional)",
   },
 
   {
     id: "formative_years_later",
     uiTitle: "Growing Up, Continued",
+    ageRange: "Ages 7–14",
     chakraWeight: ["sacral"],
     groups: [
       {
